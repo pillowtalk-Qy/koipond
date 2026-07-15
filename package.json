@@ -1,0 +1,33 @@
+{
+  "name": "koipond",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Turn your GitHub contribution graph into a living koi pond where fish graze your commits as plankton.",
+  "license": "MIT",
+  "author": "0xydev",
+  "repository": "github:0xydev/koipond",
+  "keywords": [
+    "github",
+    "contribution-graph",
+    "koi",
+    "svg",
+    "animation",
+    "profile-readme"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "demo": "tsx src/cli.ts --demo --theme both --out dist",
+    "gen": "tsx src/cli.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.8.0",
+    "vitest": "^3.2.0"
+  }
+}
