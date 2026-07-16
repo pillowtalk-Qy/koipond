@@ -97,7 +97,7 @@ outputs: |
 | --- | --- |
 | `theme` | `light` (default) or `dark` |
 | `seed` | Any string, changes fish variety and routes (defaults to the username) |
-| `fps` | Video frame rate (gif and mp4 only, default 10 for gif, 12 for mp4) |
+| `fps` | Video frame rate up to 60 (gif and mp4 only, default 10 for gif, 30 for mp4) |
 | `start` | Capture start time in seconds into the loop (default 0) |
 | `dur` | Capture length in seconds (default: the full loop) |
 | `scale` | Resolution multiplier (default 1 for gif, 2 for mp4) |
@@ -136,7 +136,7 @@ npx tsx src/cli.ts --user <login> --token <token>
 | `--seed` | Override the PRNG seed (defaults to the username) |
 | `--theme` | `light`, `dark` or `both` (default `both`) |
 | `--out` | Output directory (default `dist`) |
-| `--video` | Also render a `.gif` or `.mp4` of the full loop to the given path |
+| `--video` | Also render a `.gif` or `.mp4` of the loop, with the same query options (`pond.mp4?fps=60`) |
 
 ## How it works
 

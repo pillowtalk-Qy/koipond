@@ -6,7 +6,7 @@ import { fetchGrid, fetchGridPublic } from './github'
 import { plan } from './planner'
 import { THEMES } from './render/palette'
 import { renderSVG } from './render/svg'
-import { renderVideo } from './video'
+import { parseVideoQuery, renderVideo } from './video'
 import type { Grid } from './types'
 
 const { values } = parseArgs({
@@ -67,9 +67,10 @@ for (const key of themes) {
 }
 
 if (values.video) {
-  const key = values.video.includes('dark') && outputs.dark ? 'dark' : themes[0]
-  await renderVideo(outputs[key], values.video, p.duration)
-  console.log(`${values.video}  rendered from the ${key} theme`)
+  const [file, query] = values.video.split('?')
+  const key = file.includes('dark') && outputs.dark ? 'dark' : themes[0]
+  await renderVideo(outputs[key], file, p.duration, parseVideoQuery(query))
+  console.log(`${file}  rendered from the ${key} theme`)
 }
 
 if (outputs.light && outputs.dark) {

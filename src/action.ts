@@ -4,7 +4,7 @@ import { fetchGrid, fetchGridPublic } from './github'
 import { plan } from './planner'
 import { THEMES } from './render/palette'
 import { renderSVG } from './render/svg'
-import { renderVideo } from './video'
+import { parseVideoQuery, renderVideo } from './video'
 import type { Plan } from './types'
 
 const user = process.env.KOIPOND_USER
@@ -51,16 +51,7 @@ for (const line of outputs) {
         `${meta.duration}s loop${meta.turtle ? ', turtle' : ''}${meta.lotus ? ', lotus' : ''}`,
     )
   } else {
-    const num = (name: string) => {
-      const v = params.get(name)
-      return v === null ? undefined : Number(v)
-    }
-    await renderVideo(svg, file, p.duration, {
-      fps: num('fps'),
-      start: num('start'),
-      duration: num('dur'),
-      scale: num('scale'),
-    })
+    await renderVideo(svg, file, p.duration, parseVideoQuery(query))
     console.log(`${file}  rendered from a ${meta.duration}s loop`)
   }
 }

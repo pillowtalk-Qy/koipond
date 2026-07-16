@@ -11,6 +11,15 @@ export interface VideoOptions {
   scale?: number
 }
 
+export function parseVideoQuery(query: string | undefined): VideoOptions {
+  const params = new URLSearchParams(query ?? '')
+  const num = (name: string) => {
+    const v = params.get(name)
+    return v === null ? undefined : Number(v)
+  }
+  return { fps: num('fps'), start: num('start'), duration: num('dur'), scale: num('scale') }
+}
+
 const BROWSER_CANDIDATES = [
   'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
   'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
@@ -46,11 +55,11 @@ export async function renderVideo(svg: string, file: string, loopSeconds: number
   const height = Number(size[2])
 
   const gif = file.endsWith('.gif')
-  const fps = Math.min(30, Math.max(2, opts.fps ?? (gif ? 10 : 12)))
+  const fps = Math.min(60, Math.max(2, opts.fps ?? (gif ? 10 : 30)))
   const start = opts.start ?? 0
   const duration = Math.max(1, opts.duration ?? loopSeconds)
   const scale = Math.min(3, Math.max(0.25, opts.scale ?? (gif ? 1 : 2)))
-  const frames = Math.min(1200, Math.round(duration * fps))
+  const frames = Math.min(7200, Math.round(duration * fps))
 
   const workDir = mkdtempSync(join(tmpdir(), 'koipond-frames-'))
   const browser = await puppeteer.launch({ executablePath: findBrowser(), headless: true })
@@ -78,7 +87,21 @@ export async function renderVideo(svg: string, file: string, loopSeconds: number
     : []
   const args = ['-y', '-framerate', String(fps), '-i', join(workDir, 'f%04d.png')]
   if (gif) args.push('-vf', filters[0])
-  else args.push('-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '18', '-movflags', '+faststart')
+  else
+    args.push(
+      '-vf',
+      'crop=trunc(iw/2)*2:trunc(ih/2)*2',
+      '-c:v',
+      'libx264',
+      '-preset',
+      'slow',
+      '-pix_fmt',
+      'yuv420p',
+      '-crf',
+      '16',
+      '-movflags',
+      '+faststart',
+    )
   args.push(file)
   const result = spawnSync('ffmpeg', args, { stdio: ['ignore', 'ignore', 'pipe'] })
   rmSync(workDir, { recursive: true, force: true })
