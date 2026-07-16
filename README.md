@@ -1,6 +1,7 @@
 # koipond 🎏
 
 [![ci](https://github.com/0xydev/koipond/actions/workflows/ci.yml/badge.svg)](https://github.com/0xydev/koipond/actions/workflows/ci.yml)
+[![Marketplace](https://img.shields.io/badge/GitHub%20Marketplace-Contribution%20Koi%20Pond-2088FF?logo=githubactions&logoColor=white)](https://github.com/marketplace/actions/contribution-koi-pond)
 [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-339933?logo=nodedotjs&logoColor=white)](https://nodejs.org/)
 [![Vitest](https://img.shields.io/badge/Vitest-6E9F18?logo=vitest&logoColor=white)](https://vitest.dev/)
