@@ -84,12 +84,26 @@ Then embed the generated files in your README so the theme follows the viewer:
 </picture>
 ```
 
-Each `outputs` line accepts options as a query string:
+Each `outputs` line accepts options as a query string, and can be a `.svg`, `.gif` or `.mp4`:
+
+```yaml
+outputs: |
+  dist/koipond-light.svg
+  dist/koipond-dark.svg?theme=dark
+  dist/koipond.gif?theme=dark&fps=10&start=10&dur=8
+```
 
 | Option | Meaning |
 | --- | --- |
 | `theme` | `light` (default) or `dark` |
 | `seed` | Any string, changes fish variety and routes (defaults to the username) |
+| `fps` | Video frame rate (gif and mp4 only, default 10 for gif, 12 for mp4) |
+| `start` | Capture start time in seconds into the loop (default 0) |
+| `dur` | Capture length in seconds (default: the full loop) |
+| `scale` | Resolution multiplier (default 1 for gif, 2 for mp4) |
+
+GIF and MP4 outputs use a headless Chromium browser and ffmpeg. Both are preinstalled on GitHub
+runners, so they just work in the Action. Locally you need Chrome or Edge plus ffmpeg on PATH.
 
 ## Quick start
 
@@ -122,6 +136,7 @@ npx tsx src/cli.ts --user <login> --token <token>
 | `--seed` | Override the PRNG seed (defaults to the username) |
 | `--theme` | `light`, `dark` or `both` (default `both`) |
 | `--out` | Output directory (default `dist`) |
+| `--video` | Also render a `.gif` or `.mp4` of the full loop to the given path |
 
 ## How it works
 
@@ -138,7 +153,7 @@ npx tsx src/cli.ts --user <login> --token <token>
 
 - [x] Steering-physics fish over the contribution field, light and dark themes
 - [x] GitHub Action packaging (`uses: 0xydev/koipond@v1`) with query-string options
-- [ ] GIF output (headless browser capture)
+- [x] GIF and MP4 output (headless browser capture)
 - [ ] More species, decor unlocked by achievements, GitLab support
 
 ## Contributing
