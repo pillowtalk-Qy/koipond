@@ -32,6 +32,52 @@ The graph does not just feed the fish, it shapes the ecosystem:
 Everything is baked into a self-contained animated SVG (CSS keyframes, no JavaScript), so it works
 anywhere GitHub renders images, including profile READMEs.
 
+## Usage (GitHub Action)
+
+Add a workflow to any repository you own (your profile repository is the usual spot). It
+regenerates the pond every night and publishes the SVGs to an `output` branch:
+
+```yaml
+name: koipond
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: 0xydev/koipond@v1
+        with:
+          github_user_name: ${{ github.repository_owner }}
+          outputs: |
+            dist/koipond-light.svg
+            dist/koipond-dark.svg?theme=dark
+      - uses: crazy-max/ghaction-github-pages@v4
+        with:
+          target_branch: output
+          build_dir: dist
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
+
+Then embed the generated files in your README so the theme follows the viewer:
+
+```html
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/<user>/<repo>/output/koipond-dark.svg">
+  <img alt="koipond" src="https://raw.githubusercontent.com/<user>/<repo>/output/koipond-light.svg">
+</picture>
+```
+
+Each `outputs` line accepts options as a query string:
+
+| Option | Meaning |
+| --- | --- |
+| `theme` | `light` (default) or `dark` |
+| `seed` | Any string, changes fish variety and routes (defaults to the username) |
+
 ## Quick start
 
 ```sh
@@ -64,20 +110,6 @@ npx tsx src/cli.ts --user <login> --token <token>
 | `--theme` | `light`, `dark` or `both` (default `both`) |
 | `--out` | Output directory (default `dist`) |
 
-## Put it in your profile README
-
-Generate the SVGs, commit them to your profile repository and embed them with a `<picture>` tag so
-the theme follows the viewer:
-
-```html
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="koipond-dark.svg">
-  <img alt="koipond" src="koipond-light.svg">
-</picture>
-```
-
-A GitHub Action that regenerates the pond on a schedule is on the roadmap.
-
 ## How it works
 
 1. **Data**: GitHub GraphQL `contributionCalendar`, the public contributions page (no token), or a
@@ -92,8 +124,8 @@ A GitHub Action that regenerates the pond on a schedule is on the roadmap.
 ## Roadmap
 
 - [x] Steering-physics fish over the contribution field, light and dark themes
+- [x] GitHub Action packaging (`uses: 0xydev/koipond@v1`) with query-string options
 - [ ] GIF output (headless browser capture)
-- [ ] GitHub Action packaging (`uses: .../koipond@v1`) with query-string options
 - [ ] More species, decor unlocked by achievements, GitLab support
 
 ## Contributing

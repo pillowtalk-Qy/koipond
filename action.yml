@@ -1,0 +1,37 @@
+name: "koipond"
+description: "Generate an animated koi pond from a GitHub contribution graph"
+branding:
+  icon: "droplet"
+  color: "blue"
+
+inputs:
+  github_user_name:
+    description: "GitHub user whose contribution graph feeds the pond"
+    required: true
+  outputs:
+    description: >
+      Files to generate, one per line. Each line can be customized with a query
+      string. Supported options: theme=light|dark, seed=<any string>
+    required: false
+    default: |
+      dist/koipond-light.svg
+      dist/koipond-dark.svg?theme=dark
+  github_token:
+    description: "Token used to read the contribution calendar (falls back to public data when empty)"
+    required: false
+    default: ${{ github.token }}
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+    - run: npm ci --omit=dev --prefix "$GITHUB_ACTION_PATH"
+      shell: bash
+    - run: '"$GITHUB_ACTION_PATH/node_modules/.bin/tsx" "$GITHUB_ACTION_PATH/src/action.ts"'
+      shell: bash
+      env:
+        KOIPOND_USER: ${{ inputs.github_user_name }}
+        KOIPOND_TOKEN: ${{ inputs.github_token }}
+        KOIPOND_OUTPUTS: ${{ inputs.outputs }}
