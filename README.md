@@ -10,6 +10,8 @@
 
 Turn your GitHub contribution graph into a living koi pond, seen from above.
 
+**Try it live with your own username: [0xydev.github.io/koipond](https://0xydev.github.io/koipond)**
+
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/demo-dark.svg">
   <img alt="An animated koi pond generated from a GitHub contribution graph" src="assets/demo-light.svg">
@@ -35,8 +37,15 @@ anywhere GitHub renders images, including profile READMEs.
 
 ## Usage (GitHub Action)
 
-Add a workflow to any repository you own (your profile repository is the usual spot). It
-regenerates the pond every night and publishes the SVGs to an `output` branch:
+Five minutes, four steps, no local setup:
+
+1. Create your profile repository if you do not have one yet: a public repo named exactly after
+   your username (for example `octocat/octocat`). Its README is what visitors see on your profile.
+2. In that repo, create the file `.github/workflows/koipond.yml` with the workflow below (GitHub
+   web UI: Add file, Create new file, paste, commit).
+3. Go to the Actions tab, pick `koipond`, press `Run workflow` once. This generates the first SVGs
+   on an `output` branch. After that it refreshes itself every night.
+4. Paste the `<picture>` snippet below into your README, replacing `<user>/<repo>`.
 
 ```yaml
 name: koipond
@@ -44,6 +53,9 @@ on:
   schedule:
     - cron: "0 3 * * *"
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   generate:

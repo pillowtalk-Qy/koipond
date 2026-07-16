@@ -21,6 +21,7 @@
   "scripts": {
     "demo": "tsx src/cli.ts --demo --theme both --out dist",
     "gen": "tsx src/cli.ts",
+    "build:site": "esbuild src/web/main.ts --bundle --minify --format=iife --outfile=site/demo.js",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
@@ -29,6 +30,7 @@
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
+    "esbuild": "^0.25.0",
     "typescript": "^5.8.0",
     "vitest": "^3.2.0"
   }

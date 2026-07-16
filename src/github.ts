@@ -33,6 +33,24 @@ interface ApiDay {
   weekday: number
 }
 
+export interface Day {
+  date: string
+  count: number
+  level: Cell['level']
+}
+
+export function gridFromDays(days: Day[]): Grid {
+  const sorted = [...days].sort((a, b) => a.date.localeCompare(b.date))
+  const origin = new Date(sorted[0].date)
+  const originSunday = origin.getTime() - origin.getUTCDay() * DAY_MS
+  const cells: Cell[] = sorted.map(({ date, count, level }) => {
+    const d = new Date(date)
+    const week = Math.floor(Math.round((d.getTime() - originSunday) / DAY_MS) / 7)
+    return { week, day: d.getUTCDay(), date, count, level }
+  })
+  return { weeks: Math.max(...cells.map(c => c.week)) + 1, cells }
+}
+
 export async function fetchGrid(login: string, token: string): Promise<Grid> {
   const res = await fetch('https://api.github.com/graphql', {
     method: 'POST',
@@ -74,21 +92,14 @@ export async function fetchGridPublic(login: string): Promise<Grid> {
   if (!res.ok) throw new Error(`GitHub responded ${res.status} for ${login}'s contribution page`)
   const html = await res.text()
 
-  const days: { date: string; level: Cell['level'] }[] = []
+  const days: Day[] = []
   for (const m of html.matchAll(/<td[^>]+data-date="(\d{4}-\d{2}-\d{2})"[^>]*>/g)) {
     const level = /data-level="(\d)"/.exec(m[0])?.[1]
-    if (level !== undefined) days.push({ date: m[1], level: Number(level) as Cell['level'] })
+    if (level !== undefined) {
+      const lv = Number(level) as Cell['level']
+      days.push({ date: m[1], count: lv, level: lv })
+    }
   }
   if (days.length === 0) throw new Error(`No contribution cells found for ${login} (user missing or GitHub markup changed)`)
-
-  days.sort((a, b) => a.date.localeCompare(b.date))
-  const origin = new Date(days[0].date)
-  const originSunday = origin.getTime() - origin.getUTCDay() * DAY_MS
-
-  const cells: Cell[] = days.map(({ date, level }) => {
-    const d = new Date(date)
-    const week = Math.floor(Math.round((d.getTime() - originSunday) / DAY_MS) / 7)
-    return { week, day: d.getUTCDay(), date, count: level, level }
-  })
-  return { weeks: Math.max(...cells.map(c => c.week)) + 1, cells }
+  return gridFromDays(days)
 }

@@ -189,7 +189,7 @@ export function renderSVG(grid: Grid, plan: Plan, theme: Theme, seed: string): {
       duration: Math.round(duration * 10) / 10,
       turtle: hasTurtle,
       lotus: hasLotus,
-      bytes: Buffer.byteLength(svg, 'utf8'),
+      bytes: new TextEncoder().encode(svg).length,
     },
   }
 }
