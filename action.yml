@@ -1,4 +1,4 @@
-name: "koipond"
+name: "Contribution Koi Pond"
 description: "Generate an animated koi pond from a GitHub contribution graph"
 branding:
   icon: "droplet"
