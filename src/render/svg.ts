@@ -2,7 +2,20 @@ import { LAYOUT, cellCenter, svgWidth } from '../layout'
 import { longestGap, longestStreak } from '../planner'
 import { rng } from '../prng'
 import type { Grid, Plan, Waypoint } from '../types'
-import { ambientRipples, caustics, floorBlotches, lilyPads, lotus, motes, pebbles, turtle } from './decor'
+import {
+  SOFT_FILTER,
+  ambientRipples,
+  caustics,
+  deepShade,
+  floorBlotches,
+  godRays,
+  lilyPads,
+  lotus,
+  motes,
+  pebbles,
+  surfaceSheen,
+  turtle,
+} from './decor'
 import { fishSVG } from './fish'
 import type { Theme } from './palette'
 
@@ -95,12 +108,17 @@ export function renderSVG(grid: Grid, plan: Plan, theme: Theme, seed: string): {
     const cls = id ? `pk e${id}` : 'pk'
     const rad = PLANKTON_R[c.level]
     const fill = theme.plankton[c.level - 1]
-    const halo = theme.halo
-      ? `<circle class="tw" style="animation-delay:-${((c.week * 7 + c.day) % 9) * 0.45}s" cx="${x}" cy="${y}" r="${(rad * 2.2).toFixed(1)}" fill="${theme.halo}" opacity="0.16"/>`
-      : `<circle cx="${x}" cy="${y}" r="${(rad * 2.1).toFixed(1)}" fill="${fill}" opacity="0.26"/>`
-    planktonEls += `<g class="${cls}">${halo}<circle cx="${x}" cy="${y}" r="${rad}" fill="${fill}"/></g>`
+    const twinkle = theme.halo
+      ? `<circle class="tw" style="animation-delay:-${((c.week * 7 + c.day) % 9) * 0.45}s" cx="${x}" cy="${y}" r="${(rad * 1.8).toFixed(1)}" fill="${theme.halo}" opacity="0.14"/>`
+      : ''
+    planktonEls +=
+      `<g class="${cls}">` +
+      `<circle cx="${x}" cy="${y}" r="${(rad * 2.3).toFixed(1)}" fill="url(#pkg${c.level})"/>` +
+      twinkle +
+      `<circle cx="${x}" cy="${y}" r="${rad}" fill="${fill}"/>` +
+      `</g>`
     if (id) {
-      rippleEls += `<circle class="rp r${id}" cx="${x}" cy="${y}" r="5" fill="none" stroke="${theme.ripple}" stroke-width="1.4"/>`
+      rippleEls += `<circle class="rp r${id}" cx="${x}" cy="${y}" r="5" fill="none" stroke="${theme.ripple}" stroke-width="1.2"/>`
     }
   }
 
@@ -110,7 +128,7 @@ export function renderSVG(grid: Grid, plan: Plan, theme: Theme, seed: string): {
     bucketCSS +=
       `@keyframes e${id}{0%,${b}%{transform:scale(1)}${(b + 0.7).toFixed(1)}%,95.5%{transform:scale(0)}99%,100%{transform:scale(1)}}` +
       `.e${id}{animation-name:e${id}}` +
-      `@keyframes r${id}{0%,${b}%{transform:scale(0.3);opacity:0}${(b + 0.25).toFixed(2)}%{opacity:0.6}${(b + 2.8).toFixed(1)}%,100%{transform:scale(2.7);opacity:0}}` +
+      `@keyframes r${id}{0%,${b}%{transform:scale(0.35);opacity:0}${(b + 0.3).toFixed(2)}%{opacity:0.55}${(b + 3.2).toFixed(1)}%,100%{transform:scale(3.4);opacity:0}}` +
       `.r${id}{animation-name:r${id}}`
   }
 
@@ -130,21 +148,23 @@ export function renderSVG(grid: Grid, plan: Plan, theme: Theme, seed: string): {
 @keyframes pec{0%,100%{transform:rotate(14deg)}50%{transform:rotate(-12deg)}}
 @keyframes tfk{0%,100%{transform:rotate(26deg)}50%{transform:rotate(-26deg)}}
 .tw{animation:tw 3.6s ease-in-out infinite alternate}
+.ray{animation:ray 9.5s ease-in-out infinite alternate}
 .sway{transform-box:fill-box;transform-origin:center;animation-name:sway;animation-timing-function:ease-in-out;animation-iteration-count:infinite;animation-direction:alternate}
 .bloom{transform-box:fill-box;transform-origin:center;animation:bloom 5.2s ease-in-out infinite alternate}
 .paddle{transform-box:fill-box;transform-origin:center;animation:paddle 1.4s ease-in-out infinite alternate}
-.ca{opacity:0.05;animation:ca 15s ease-in-out infinite alternate}
+.ca{opacity:0.07;animation:ca 15s ease-in-out infinite alternate}
 .mo{opacity:0;animation-name:mo;animation-timing-function:linear;animation-iteration-count:infinite}
 .ar{transform-box:fill-box;transform-origin:center;opacity:0;animation:ar 9s linear infinite}
 .turtle{animation:turtle ${duration}s linear infinite}
 .night{opacity:0;animation:night ${duration}s linear infinite}
-@keyframes tw{from{opacity:0.08}to{opacity:0.3}}
+@keyframes tw{from{opacity:0.06}to{opacity:0.26}}
+@keyframes ray{from{opacity:0.07}to{opacity:0.2}}
 @keyframes sway{from{transform:rotate(-2.4deg)}to{transform:rotate(2.6deg)}}
 @keyframes bloom{from{transform:scale(1)}to{transform:scale(1.07)}}
 @keyframes paddle{from{transform:rotate(14deg)}to{transform:rotate(-14deg)}}
-@keyframes ca{from{transform:translate(-24px,0)}to{transform:translate(24px,8px)}}
-@keyframes mo{0%{transform:translate(0,0);opacity:0}15%{opacity:0.5}85%{opacity:0.35}100%{transform:translate(14px,-26px);opacity:0}}
-@keyframes ar{0%{transform:scale(0.2);opacity:0}6%{opacity:0.32}26%,100%{transform:scale(3);opacity:0}}
+@keyframes ca{from{transform:translate(-26px,0)}to{transform:translate(26px,9px)}}
+@keyframes mo{0%{transform:translate(0,0);opacity:0}15%{opacity:0.55}85%{opacity:0.4}100%{transform:translate(14px,-26px);opacity:0}}
+@keyframes ar{0%{transform:scale(0.2);opacity:0}6%{opacity:0.22}26%,100%{transform:scale(3.6);opacity:0}}
 @keyframes turtle{0%{transform:translate(-40px,${turtleY}px)}100%{transform:translate(${width + 40}px,${turtleY}px)}}
 @keyframes night{0%,91%{opacity:0}95%,97.5%{opacity:${theme.night}}100%{opacity:0}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important}}
@@ -152,26 +172,50 @@ export function renderSVG(grid: Grid, plan: Plan, theme: Theme, seed: string): {
 
   const css = base + bucketCSS + fishKeyframes(plan)
 
+  const planktonGlow = theme.plankton
+    .map(
+      (color, i) =>
+        `<radialGradient id="pkg${i + 1}">` +
+        `<stop offset="0" stop-color="${color}" stop-opacity="0.9"/>` +
+        `<stop offset="0.45" stop-color="${color}" stop-opacity="0.32"/>` +
+        `<stop offset="1" stop-color="${color}" stop-opacity="0"/>` +
+        `</radialGradient>`,
+    )
+    .join('')
+
   const svg =
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${LAYOUT.height}" width="${width}" height="${LAYOUT.height}">` +
     `<title>Contribution koi pond: ${plan.eats.length} plankton grazed by ${plan.fishes.length} fish</title>` +
     `<style>${css}</style>` +
     `<defs>` +
     `<linearGradient id="water" x1="0" y1="0" x2="0" y2="1">` +
-    `<stop offset="0" stop-color="${theme.waterTop}"/><stop offset="1" stop-color="${theme.waterBottom}"/>` +
+    `<stop offset="0" stop-color="${theme.waterTop}"/>` +
+    `<stop offset="0.55" stop-color="${theme.waterMid}"/>` +
+    `<stop offset="1" stop-color="${theme.waterBottom}"/>` +
+    `</linearGradient>` +
+    `<linearGradient id="sheenG" x1="0" y1="0" x2="0" y2="1">` +
+    `<stop offset="0" stop-color="${theme.sheen}"/><stop offset="1" stop-color="${theme.sheen}" stop-opacity="0"/>` +
+    `</linearGradient>` +
+    `<linearGradient id="deepG" x1="0" y1="0" x2="0" y2="1">` +
+    `<stop offset="0" stop-color="${theme.deep}" stop-opacity="0"/><stop offset="1" stop-color="${theme.deep}"/>` +
     `</linearGradient>` +
     `<radialGradient id="vig" cx="0.5" cy="0.5" r="0.72">` +
-    `<stop offset="0.62" stop-color="rgba(0,0,0,0)"/><stop offset="1" stop-color="${theme.vignette}"/>` +
+    `<stop offset="0.55" stop-color="rgba(0,0,0,0)"/><stop offset="1" stop-color="${theme.vignette}"/>` +
     `</radialGradient>` +
+    planktonGlow +
+    SOFT_FILTER +
     theme.fishFilter +
     `</defs>` +
     `<rect width="${width}" height="${LAYOUT.height}" rx="10" fill="url(#water)"/>` +
     floorBlotches(width, theme, r) +
+    deepShade(width) +
     caustics(width, theme) +
+    godRays(width, theme, r) +
     `<g>${planktonEls}</g>` +
     `<g>${rippleEls}</g>` +
     pebbles(theme, r) +
     `<rect width="${width}" height="${LAYOUT.height}" rx="10" fill="url(#vig)"/>` +
+    surfaceSheen(width, theme) +
     lilyPads(width, theme, r) +
     (hasLotus ? lotus(lotusX, theme, r) : '') +
     (hasTurtle ? turtle(theme) : '') +

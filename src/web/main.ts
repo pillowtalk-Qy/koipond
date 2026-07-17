@@ -120,6 +120,16 @@ form.addEventListener('submit', e => {
   if (user) void generate(user)
 })
 
+document.querySelectorAll<HTMLButtonElement>('.chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    const user = chip.dataset.user ?? ''
+    if (user) {
+      input.value = user
+      void generate(user)
+    }
+  })
+})
+
 tabs.addEventListener('click', e => {
   const b = (e.target as HTMLElement).closest('button')
   if (b?.dataset.theme) show(b.dataset.theme as 'light' | 'dark')

@@ -76,16 +76,21 @@ if (values.video) {
 if (outputs.light && outputs.dark) {
   const uri = (svg: string) => `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`
   const preview = `<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><title>koipond preview</title>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>koipond preview</title>
 <style>
-body{margin:0;padding:32px;background:#0d1117;color:#e6edf3;font-family:ui-sans-serif,system-ui,sans-serif;display:grid;gap:28px;justify-items:center}
-section{width:100%;max-width:960px}
-h2{font-size:14px;font-weight:600;color:#8b949e;margin:0 0 10px}
-img{width:100%;height:auto;display:block}
+body{margin:0;padding:48px 20px 64px;background:radial-gradient(1200px 600px at 20% -10%,rgba(34,211,238,0.12),transparent 60%),radial-gradient(900px 500px at 90% 10%,rgba(52,211,153,0.08),transparent 60%),#051019;color:#e3f4fb;font-family:ui-sans-serif,system-ui,sans-serif;display:grid;gap:32px;justify-items:center}
+header{display:grid;gap:10px;justify-items:center;text-align:center}
+h1{margin:0;font-size:26px;font-weight:800;letter-spacing:-0.02em}
+h1 span{background:linear-gradient(100deg,#7ff3ff,#22d3ee 45%,#34d399);-webkit-background-clip:text;background-clip:text;color:transparent}
+p{margin:0;color:#82a9bc;font-size:14px}
+section{width:100%;max-width:1000px;background:rgba(13,33,47,0.6);border:1px solid rgba(125,211,252,0.14);border-radius:18px;padding:16px;box-shadow:0 18px 50px rgba(0,0,0,0.35)}
+h2{font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#22d3ee;margin:0 0 12px;font-family:ui-monospace,monospace}
+img{width:100%;height:auto;display:block;border-radius:10px}
 </style></head><body>
-<h1 style="margin:0;font-size:20px">🎏 koipond: your contribution graph as a living koi pond</h1>
+<header><h1>🎏 <span>koipond</span></h1><p>your contribution graph as a living koi pond</p></header>
 <section><h2>light</h2><img alt="light pond" src="${uri(outputs.light)}"></section>
-<section><h2>dark (bioluminescent)</h2><img alt="dark pond" src="${uri(outputs.dark)}"></section>
+<section><h2>dark · bioluminescent</h2><img alt="dark pond" src="${uri(outputs.dark)}"></section>
 </body></html>`
   const file = join(values.out, 'preview.html')
   writeFileSync(file, preview)

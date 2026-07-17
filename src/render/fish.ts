@@ -48,10 +48,10 @@ export function fishSVG(f: FishPlan, theme: Theme, seed: string): string {
     if (band2 && i >= b2Start && i < b2Start + 3) return band
     return base
   }
-  const segOpacity = (i: number) => Math.min(0.9, 0.82 * Math.pow(1 - i / (N - 1), 1.1) + 0.13)
+  const segOpacity = (i: number) => Math.min(0.94, 0.86 * Math.pow(1 - i / (N - 1), 1.05) + 0.15)
 
   const ridge = theme.key === 'dark' ? '#e6fbff' : '#0a2430'
-  const ridgeOp = theme.key === 'dark' ? 0.12 : 0.09
+  const ridgeOp = theme.key === 'dark' ? 0.17 : 0.13
   let trail = ''
   for (let i = N - 1; i >= 0; i--) {
     const d = i === 0 ? '' : ` style="animation-delay:${f2(i * lag)}s"`
