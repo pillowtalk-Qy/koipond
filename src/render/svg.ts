@@ -234,7 +234,9 @@ function turtleChoreography(
   const impact = push + 4.6
   const splash = impact + 1
   const depart = Math.max(splash + 1.6, percentAt(exitDepart.x))
-  const initialDelay = Math.max(0, (approach / 100) * duration - 4)
+  const initialX = Math.max(48, width * 0.07)
+  const initialDelay = (percentAt(initialX) / 100) * duration
+  const transitY = turtleY - 6
   const delayCSS = `-${f1(initialDelay)}s`
   const frame = (at: number, x: number, y: number, easing = 'linear') =>
     `${percent(at)}%{transform:translate(${f1(x)}px,${f1(y)}px);animation-timing-function:${easing}}`
@@ -244,7 +246,7 @@ function turtleChoreography(
   const step3 = walkStart + (brace - walkStart) * 0.74
   const motion =
     `@keyframes turtle{` +
-    `0%{transform:translate(-40px,${turtleY}px)}` +
+    `0%{transform:translate(-40px,${transitY}px)}` +
     frame(approach, entryApproach.x, entryApproach.y) +
     frame(contact, entryContact.x, entryContact.y, 'ease-out') +
     frame(lift, entryLift.x, entryLift.y, 'ease-in-out') +
@@ -257,7 +259,7 @@ function turtleChoreography(
     frame(impact, exitImpact.x, exitImpact.y, 'ease-in') +
     frame(splash, exitSplash.x, exitSplash.y, 'ease-out') +
     frame(depart, exitDepart.x, exitDepart.y) +
-    `100%{transform:translate(${width + 40}px,${turtleY}px)}}`
+    `100%{transform:translate(${width + 40}px,${transitY}px)}}`
   const body =
     `@keyframes turtle-body{` +
     `0%,${percent(approach)}%{transform:translateY(0) rotate(0) scale(1)}` +

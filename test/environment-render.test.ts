@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { demoGrid } from '../src/demo'
 import { deriveEnvironment, momentFromText } from '../src/environment'
+import { svgWidth } from '../src/layout'
 import { plan } from '../src/planner'
 import { THEMES, themeForEnvironment } from '../src/render/palette'
 import { renderSVG } from '../src/render/svg'
@@ -85,9 +86,14 @@ describe('environment-aware original renderer', () => {
     expect(svg).toContain('@keyframes turtle-splash-out{')
     expect(svg).toContain('class="turtle-impact"')
     expect(svg.match(/class="turtle-droplet"/g)).toHaveLength(4)
-    const turtleDelay = svg.match(/\.turtle\{[^}]*animation-delay:-([\d.]+)s/)?.[1]
+    const turtleAnimation = svg.match(/animation:turtle ([\d.]+)s linear infinite;animation-delay:-([\d.]+)s/)
+    const turtleDuration = Number(turtleAnimation?.[1])
+    const turtleDelay = Number(turtleAnimation?.[2])
+    const initialX = -40 + (svgWidth(turtleGrid.weeks) + 80) * (turtleDelay / turtleDuration)
     const approachY = svg.match(/@keyframes turtle\{0%\{[^}]+\}[\d.]+%\{transform:translate\([^,]+,([\d.]+)px\)/)?.[1]
-    expect(Number(turtleDelay)).toBeGreaterThan(20)
+    expect(turtleDelay).toBeGreaterThan(0)
+    expect(initialX).toBeGreaterThanOrEqual(48)
+    expect(initialX).toBeLessThan(svgWidth(turtleGrid.weeks) * 0.12)
     expect(Number(approachY)).toBeLessThanOrEqual(154)
     expect(svg).toContain('@keyframes snow-track-7{')
   })
