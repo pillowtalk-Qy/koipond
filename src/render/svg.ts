@@ -545,7 +545,7 @@ export function renderSVG(
 @keyframes sway{from{transform:rotate(${(swayBias - swayAngle).toFixed(1)}deg)}to{transform:rotate(${(swayBias + swayAngle).toFixed(1)}deg)}}
 @keyframes bloom{from{transform:scale(1)}to{transform:scale(1.07)}}
 @keyframes lotus-bud{from{transform:translateY(0) rotate(-2deg)}to{transform:translateY(-0.5px) rotate(2deg)}}
-@keyframes summer-lotus-bud{from{transform:scale(0.96) rotate(-1deg)}to{transform:scale(1.02) rotate(1deg)}}
+@keyframes summer-lotus-bud{from{transform:scale(0.99)}to{transform:scale(1.01)}}
 @keyframes firefly-flight{0%,100%{transform:translate(0,0)}29%{transform:translate(var(--ffx1),var(--ffy1))}64%{transform:translate(var(--ffx2),var(--ffy2))}82%{transform:translate(var(--ffx3),var(--ffy3))}}
 @keyframes firefly-glow{0%,100%{transform:scale(0.72);opacity:0.2}32%{transform:scale(1);opacity:1}54%{transform:scale(0.78);opacity:0.28}78%{transform:scale(0.94);opacity:0.82}}
 @keyframes snowfall{0%{transform:translate(0,-12px) rotate(0);opacity:0}9%{opacity:var(--snow-opacity)}42%{transform:translate(var(--snow-x1),76px) rotate(72deg);opacity:var(--snow-opacity)}73%{transform:translate(var(--snow-x2),139px) rotate(132deg);opacity:var(--snow-opacity)}92%{opacity:var(--snow-opacity)}100%{transform:translate(var(--snow-x3),202px) rotate(185deg);opacity:0}}
@@ -587,6 +587,10 @@ ${turtleScene.css}
     ? `<metadata id="koipond-environment">${escapeXML(JSON.stringify(context.environment))}</metadata>`
     : ''
   const lotusPresence = environment?.bloom ?? 1
+  const naturalLotusOpenness = environment?.lotusOpenness ?? 1
+  const lotusOpenness = environment?.season === 'summer'
+    ? Math.max(naturalLotusOpenness, 0.56 + environment.nightDepth * 0.24)
+    : naturalLotusOpenness
   const environmentDescription = context.environment
     ? ` It is ${context.environment.phase} in ${context.environment.season}.`
     : ''
@@ -646,14 +650,14 @@ ${turtleScene.css}
     `<rect width="${width}" height="${LAYOUT.height}" rx="10" fill="url(#vig)"/>` +
     surfaceSheen(width, theme, sheenIntensity) +
     lilyPads(width, theme, seed, environment?.plantCoverage ?? 1) +
-    summerBlooms(width, theme, seed, environment?.summerBloom ?? 0, environment?.lotusOpenness ?? 1) +
+    summerBlooms(width, theme, seed, environment?.summerBloom ?? 0, lotusOpenness) +
     (hasLotus && lotusPresence >= 0.35
       ? `<g opacity="${lotusPresence.toFixed(3)}">${lotus(
           lotusX,
           theme,
           r,
-          environment?.lotusOpenness ?? 1,
-          environment?.season === 'summer',
+          lotusOpenness,
+          environment?.season === 'summer' && lotusOpenness < 0.72,
         )}</g>`
       : '') +
     plan.fishes.map(f => `<g>${fishSVG(f, theme, staticTime, timelineDuration, animationDuration)}</g>`).join('') +

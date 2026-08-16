@@ -201,6 +201,22 @@ function lotusState(openness: number) {
   return openness >= 0.72 ? 'open' : openness >= 0.3 ? 'opening' : 'sleeping'
 }
 
+function closedLotusBud(theme: Theme, radius: number): string {
+  const outerX = f1(radius)
+  const outerY = f1(radius * 0.72)
+  const petalX = f1(radius * 0.29)
+  const petalY = f1(radius * 0.58)
+  const side = f1(radius * 0.27)
+  return (
+    `<ellipse cx="${f1(radius * 0.12)}" cy="${f1(radius * 0.18)}" rx="${f1(radius * 1.04)}" ry="${f1(radius * 0.76)}" fill="rgba(0,20,25,0.14)"/>` +
+    `<ellipse rx="${outerX}" ry="${outerY}" fill="${theme.lotusOuter}" opacity="0.58" ` +
+    `stroke="${theme.lotusInner}" stroke-width="0.55" stroke-opacity="0.32"/>` +
+    `<ellipse cx="-${side}" rx="${petalX}" ry="${petalY}" transform="rotate(-14 -${side} 0)" fill="${theme.lotusOuter}" opacity="0.72"/>` +
+    `<ellipse rx="${petalX}" ry="${f1(radius * 0.63)}" fill="${theme.lotusInner}" opacity="0.82"/>` +
+    `<ellipse cx="${side}" rx="${petalX}" ry="${petalY}" transform="rotate(14 ${side} 0)" fill="${theme.lotusOuter}" opacity="0.72"/>`
+  )
+}
+
 function smallLotus(theme: Theme, scale: number, delay: number, openness: number): string {
   const open = clamp01(openness)
   const openOpacity = clamp01((open - 0.16) / 0.72)
@@ -220,12 +236,8 @@ function smallLotus(theme: Theme, scale: number, delay: number, openness: number
     `<ellipse cx="1.8" cy="2.5" rx="7.2" ry="6" fill="rgba(0,20,25,0.18)"/>` +
     `<g class="lotus-open-stage" opacity="${openOpacity.toFixed(3)}" transform="scale(${f1(openScaleX)} ${f1(openScaleY)})">` +
     `<g class="bloom" style="animation-delay:-${f1(delay)}s">${petals}${inner}<circle r="1.7" fill="${theme.lotusHeart}"/></g></g>` +
-    `<g class="summer-lotus-bud" data-lotus-form="closed-rosette" opacity="${budOpacity.toFixed(3)}" style="animation-delay:-${f1(delay * 0.6)}s">` +
-    `<ellipse rx="4.8" ry="3.1" fill="${theme.lotusOuter}" opacity="0.72"/>` +
-    `<ellipse rx="4.2" ry="1.65" transform="rotate(0)" fill="${theme.lotusInner}"/>` +
-    `<ellipse rx="4" ry="1.55" transform="rotate(58)" fill="${theme.lotusOuter}"/>` +
-    `<ellipse rx="4" ry="1.55" transform="rotate(-58)" fill="${theme.lotusInner}"/>` +
-    `<circle r="0.75" fill="${theme.lotusHeart}" opacity="0.58"/>` +
+    `<g class="summer-lotus-bud" data-lotus-form="closed-bud" opacity="${(budOpacity * 0.82).toFixed(3)}" style="animation-delay:-${f1(delay * 0.6)}s">` +
+    closedLotusBud(theme, 4.2) +
     `</g>` +
     `</g>`
   )
@@ -437,12 +449,8 @@ export function lotus(
     inner += `<ellipse rx="4.6" ry="2" transform="rotate(${22 + k * 72})" fill="${theme.lotusInner}"/>`
   }
   const closedStage = compactNightBloom
-    ? `<g class="summer-lotus-bud" data-lotus-form="closed-rosette" opacity="${budOpacity.toFixed(3)}">` +
-      `<ellipse rx="6.8" ry="4.3" fill="${theme.lotusOuter}" opacity="0.72"/>` +
-      `<ellipse rx="6" ry="2.35" fill="${theme.lotusInner}"/>` +
-      `<ellipse rx="5.7" ry="2.2" transform="rotate(58)" fill="${theme.lotusOuter}"/>` +
-      `<ellipse rx="5.7" ry="2.2" transform="rotate(-58)" fill="${theme.lotusInner}"/>` +
-      `<circle r="1" fill="${theme.lotusHeart}" opacity="0.58"/>` +
+    ? `<g class="summer-lotus-bud" data-lotus-form="closed-bud" opacity="${(budOpacity * 0.78).toFixed(3)}">` +
+      closedLotusBud(theme, 5.8) +
       `</g>`
     : `<g class="lotus-bud" opacity="${budOpacity.toFixed(3)}">` +
       `<ellipse rx="3.5" ry="8" fill="${theme.lotusOuter}"/>` +
