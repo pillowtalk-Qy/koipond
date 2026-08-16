@@ -1,4 +1,4 @@
-import { cellEnergy, desiredPopulation, ecosystemStats, pondObstacleLayout } from './ecology'
+import { cellEnergy, desiredPopulation, ecosystemStats, pondObstacleLayout, type PondObstacleSpec } from './ecology'
 import type { PondEnvironment } from './environment'
 import { rng } from './prng'
 import { LAYOUT, cellCenter, svgWidth } from './layout'
@@ -27,6 +27,29 @@ interface Sim {
   maxSpeed: number
   maxForce: number
   satiety: number
+}
+
+function resolveIceCollision(point: { x: number; y: number }, obstacles: PondObstacleSpec[]): boolean {
+  let moved = false
+  for (let pass = 0; pass < 12; pass++) {
+    let passMoved = false
+    for (const obstacle of obstacles) {
+      if (obstacle.kind !== 'ice') continue
+      const ox = point.x - obstacle.x
+      const oy = point.y - obstacle.y
+      const distance = Math.hypot(ox, oy)
+      const boundary = obstacle.radius + 0.75
+      if (distance >= boundary) continue
+      const nx = distance > 1e-6 ? ox / distance : 1
+      const ny = distance > 1e-6 ? oy / distance : 0
+      point.x = obstacle.x + nx * boundary
+      point.y = obstacle.y + ny * boundary
+      passMoved = true
+      moved = true
+    }
+    if (!passMoved) break
+  }
+  return moved
 }
 
 export function plan(grid: Grid, seed: string, identities?: FishIdentity[], environment?: PondEnvironment): Plan {
@@ -63,6 +86,7 @@ export function plan(grid: Grid, seed: string, identities?: FishIdentity[], envi
       x: LAYOUT.padX + ((i + 0.5) / fishCount) * (width - LAYOUT.padX * 2),
       y: LAYOUT.gridY + 10 + r() * (7 * LAYOUT.cell - 20),
     }
+    resolveIceCollision(start, obstacles)
     fishes.push({
       id: i,
       key: identity?.key ?? `${seed}-${i}`,
@@ -190,17 +214,13 @@ export function plan(grid: Grid, seed: string, identities?: FishIdentity[], envi
     s.pos.x += s.vel.x * SIM_DT
     s.pos.y += s.vel.y * SIM_DT
 
-    for (const obstacle of obstacles) {
-      if (obstacle.kind !== 'ice') continue
-      const ox = s.pos.x - obstacle.x
-      const oy = s.pos.y - obstacle.y
-      const distance = Math.hypot(ox, oy) || 1
-      const boundary = obstacle.radius + 0.75
-      if (distance >= boundary) continue
-      const nx = ox / distance
-      const ny = oy / distance
-      s.pos.x = obstacle.x + nx * boundary
-      s.pos.y = obstacle.y + ny * boundary
+    const beforeCollision = { ...s.pos }
+    if (resolveIceCollision(s.pos, obstacles)) {
+      const shiftX = s.pos.x - beforeCollision.x
+      const shiftY = s.pos.y - beforeCollision.y
+      const shiftLength = Math.hypot(shiftX, shiftY) || 1
+      const nx = shiftX / shiftLength
+      const ny = shiftY / shiftLength
       const inwardVelocity = s.vel.x * nx + s.vel.y * ny
       if (inwardVelocity < 0) {
         s.vel.x -= inwardVelocity * nx
@@ -297,6 +317,7 @@ export function plan(grid: Grid, seed: string, identities?: FishIdentity[], envi
         wp.x = wp.x * (1 - e) + f.start.x * e
         wp.y = wp.y * (1 - e) + f.start.y * e
         wp.satiety *= 1 - e
+        resolveIceCollision(wp, obstacles)
       }
     }
     const last = f.waypoints[f.waypoints.length - 1]

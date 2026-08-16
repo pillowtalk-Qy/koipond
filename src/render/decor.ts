@@ -1,5 +1,5 @@
 import { LAYOUT } from '../layout'
-import { iceFloeLayout, lilyPadLayout, type IceFloeSpec } from '../ecology'
+import { iceFloeBoundaryPoints, iceFloeLayout, lilyPadLayout, type IceFloeSpec } from '../ecology'
 import { rng } from '../prng'
 import { f1 } from '../util'
 import type { Theme } from './palette'
@@ -8,15 +8,41 @@ import type { Theme } from './palette'
 export const SOFT_FILTER =
   `<filter id="soft" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="7"/></filter>`
 
-export function floorBlotches(width: number, r: () => number): string {
+function smoothClosedPath(points: Array<{ x: number; y: number }>): string {
+  let path = `M${f1(points[0].x)} ${f1(points[0].y)}`
+  points.forEach((point, pointIndex) => {
+    const previous = points[(pointIndex - 1 + points.length) % points.length]
+    const next = points[(pointIndex + 1) % points.length]
+    const afterNext = points[(pointIndex + 2) % points.length]
+    const control1 = {
+      x: point.x + (next.x - previous.x) / 6,
+      y: point.y + (next.y - previous.y) / 6,
+    }
+    const control2 = {
+      x: next.x - (afterNext.x - point.x) / 6,
+      y: next.y - (afterNext.y - point.y) / 6,
+    }
+    path += ` C${f1(control1.x)} ${f1(control1.y)} ${f1(control2.x)} ${f1(control2.y)} ${f1(next.x)} ${f1(next.y)}`
+  })
+  return `${path} Z`
+}
+
+export function floorBlotches(width: number, r: () => number, opacityScale = 1): string {
   let out = ''
   for (let i = 0; i < 4; i++) {
     const x = f1(width * (0.12 + r() * 0.76))
     const y = f1(30 + r() * (LAYOUT.height - 60))
     const duration = f1(24 + r() * 10)
     const delay = f1(r() * 18)
-    const opacity = f1(0.34 + r() * 0.18)
-    out += `<ellipse class="floor" style="--floor-opacity:${opacity};animation-duration:${duration}s;animation-delay:-${delay}s" cx="${x}" cy="${y}" rx="${f1(54 + r() * 72)}" ry="${f1(17 + r() * 18)}" fill="url(#floorG)" filter="url(#soft)"/>`
+    const opacity = ((0.34 + r() * 0.18) * opacityScale).toFixed(2)
+    const rx = 54 + r() * 72
+    const ry = 17 + r() * 18
+    const points = Array.from({ length: 10 }, (_, point) => {
+      const angle = (point / 10) * Math.PI * 2
+      const variance = 0.8 + r() * 0.32
+      return { x: Math.cos(angle) * rx * variance, y: Math.sin(angle) * ry * variance }
+    })
+    out += `<g transform="translate(${x} ${y})"><path class="floor" style="--floor-opacity:${opacity};animation-duration:${duration}s;animation-delay:-${delay}s" d="${smoothClosedPath(points)}" fill="url(#floorG)" filter="url(#floorSoft)"/></g>`
   }
   return out
 }
@@ -193,27 +219,7 @@ export function autumnMapleLeaves(width: number, theme: Theme, seed: string, int
 }
 
 function smoothIcePath(floe: IceFloeSpec, seed: string, index: number): string {
-  const r = rng(`ice-shape:${seed}:${index}`)
-  const points = Array.from({ length: 12 }, (_, point) => {
-    const angle = (point / 12) * Math.PI * 2
-    const variance = 0.88 + r() * 0.2
-    return {
-      x: Math.cos(angle) * floe.rx * variance,
-      y: Math.sin(angle) * floe.ry * variance,
-    }
-  })
-  const midpoint = (left: { x: number; y: number }, right: { x: number; y: number }) => ({
-    x: (left.x + right.x) / 2,
-    y: (left.y + right.y) / 2,
-  })
-  const start = midpoint(points[points.length - 1], points[0])
-  let path = `M${f1(start.x)} ${f1(start.y)}`
-  points.forEach((point, pointIndex) => {
-    const next = points[(pointIndex + 1) % points.length]
-    const mid = midpoint(point, next)
-    path += ` Q${f1(point.x)} ${f1(point.y)} ${f1(mid.x)} ${f1(mid.y)}`
-  })
-  return `${path} Z`
+  return smoothClosedPath(iceFloeBoundaryPoints(floe, seed, index))
 }
 
 function snowTracks(floe: IceFloeSpec): string {
@@ -322,6 +328,7 @@ export function turtle(theme: Theme): string {
     `<g transform="rotate(${deg} ${x} ${y})"><g class="paddle-phase ${name}"><ellipse class="paddle" style="animation-delay:${delay}s" cx="${x}" cy="${y}" rx="4.4" ry="1.9" fill="${theme.turtleSkin}"/></g></g>`
   return (
     `<g class="turtle">` +
+    `<g class="turtle-scale" transform="scale(1.1)">` +
     `<ellipse class="turtle-shadow" cx="2.5" cy="4" rx="11.5" ry="10" fill="rgba(0,20,25,0.2)"/>` +
     `<g class="turtle-body">` +
     flipper('paddle-front-left', -7, -8, -38, 0) +
@@ -335,6 +342,6 @@ export function turtle(theme: Theme): string {
     `<path d="M0 -6.6 V6.6 M-5.7 -3.3 L5.7 3.3 M-5.7 3.3 L5.7 -3.3" stroke="${theme.turtleRing}" stroke-width="1.1"/>` +
     `<path d="M-3.5 -8.6 A9.2 9.2 0 0 1 5 -7.8" fill="none" stroke="${theme.sheen}" stroke-width="1.3" opacity="0.4" stroke-linecap="round"/>` +
     `<circle cx="13.4" cy="-1.2" r="0.7" fill="#10222c"/><circle cx="13.4" cy="1.2" r="0.7" fill="#10222c"/>` +
-    `</g></g>`
+    `</g></g></g>`
   )
 }

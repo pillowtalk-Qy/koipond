@@ -1,5 +1,5 @@
 import { LAYOUT, cellCenter, svgWidth } from '../layout'
-import { iceFloeLayout, pondObstacleLayout } from '../ecology'
+import { iceFloeLayout, iceFloeSideContact, pondObstacleLayout } from '../ecology'
 import type { PondEnvironment } from '../environment'
 import { longestGap, longestStreak } from '../planner'
 import { rng } from '../prng'
@@ -168,6 +168,7 @@ function bestStaticTime(plan: Plan, width: number, seed: string, environment?: P
 interface TurtleChoreography {
   css: string
   effects: string
+  delay: number
 }
 
 function turtleChoreography(
@@ -189,25 +190,48 @@ function turtleChoreography(
         `@keyframes turtle-shadow{0%,100%{opacity:0.18;transform:scale(1)}50%{opacity:0.14;transform:scale(0.94)}}` +
         `.snow-track{opacity:0}`,
       effects: '',
+      delay: 0,
     }
   }
   const percentAt = (x: number) => Math.max(0, Math.min(100, ((x + 40) / (width + 80)) * 100))
   const percent = (value: number) => value.toFixed(2)
-  const iceY = Math.min(turtleY - 6, floe.y - 2)
-  const left = floe.x - floe.rx
-  const right = floe.x + floe.rx
-  const approach = percentAt(left - 32)
-  const contact = percentAt(left - 14)
-  const lift = contact + 1.6
-  const mount = contact + 4.2
-  const walkStart = contact + 5.4
+  const entry = iceFloeSideContact(floe, seed, 1, 'left')
+  const exit = iceFloeSideContact(floe, seed, 1, 'right')
+  const alongNormal = (
+    contact: typeof entry,
+    distance: number,
+  ) => ({ x: contact.x + contact.normalX * distance, y: contact.y + contact.normalY * distance })
+  const clampHeading = (value: number) => Math.max(-12, Math.min(12, value))
+  const heading = (x: number, y: number) => clampHeading((Math.atan2(y, x) * 180) / Math.PI)
+  const poseAngle = (value: number) => f1(Math.max(-20, Math.min(20, value)))
+  const entryApproach = alongNormal(entry, 34)
+  const entryContact = alongNormal(entry, 16)
+  const entryLift = alongNormal(entry, 7)
+  const entryMount = alongNormal(entry, -10)
+  const entryWalk = alongNormal(entry, -24)
+  const exitBrace = alongNormal(exit, -25)
+  const exitPush = alongNormal(exit, -11)
+  const exitAir = alongNormal(exit, 2)
+  const exitImpact = alongNormal(exit, 12)
+  const exitSplash = alongNormal(exit, 19)
+  const exitDepart = alongNormal(exit, 43)
+  const entryHeading = heading(-entry.normalX, -entry.normalY)
+  const walkHeading = heading(exitBrace.x - entryWalk.x, exitBrace.y - entryWalk.y)
+  const exitHeading = heading(exit.normalX, exit.normalY)
+  const approach = percentAt(entryApproach.x)
+  const contact = Math.max(approach + 1, percentAt(entryContact.x))
+  const lift = contact + 1.8
+  const mount = contact + 4.6
+  const walkStart = contact + 6.2
   const middle = Math.max(walkStart + 1, percentAt(floe.x))
-  const brace = Math.max(middle + 1, percentAt(right - 24))
+  const brace = Math.max(middle + 1, percentAt(exitBrace.x))
   const push = brace + 1.5
   const air = push + 2.2
   const impact = push + 4.6
   const splash = impact + 1
-  const depart = Math.max(splash + 1.6, percentAt(right + 36))
+  const depart = Math.max(splash + 1.6, percentAt(exitDepart.x))
+  const initialDelay = Math.max(0, (approach / 100) * duration - 4)
+  const delayCSS = `-${f1(initialDelay)}s`
   const frame = (at: number, x: number, y: number, easing = 'linear') =>
     `${percent(at)}%{transform:translate(${f1(x)}px,${f1(y)}px);animation-timing-function:${easing}}`
   const bodyFrame = (at: number, transform: string) => `${percent(at)}%{transform:${transform}}`
@@ -217,34 +241,34 @@ function turtleChoreography(
   const motion =
     `@keyframes turtle{` +
     `0%{transform:translate(-40px,${turtleY}px)}` +
-    frame(approach, left - 32, turtleY) +
-    frame(contact, left - 14, turtleY, 'ease-out') +
-    frame(lift, left - 6, turtleY - 2, 'ease-in-out') +
-    frame(mount, left + 8, iceY + 4, 'ease-out') +
-    frame(walkStart, left + 22, iceY, 'linear') +
-    frame(middle, floe.x, iceY) +
-    frame(brace, right - 24, iceY, 'linear') +
-    frame(push, right - 14, iceY - 2, 'ease-in') +
-    frame(air, right - 6, turtleY - 12, 'ease-out') +
-    frame(impact, right + 6, turtleY - 2, 'ease-in') +
-    frame(splash, right + 12, turtleY, 'ease-out') +
-    frame(depart, right + 36, turtleY) +
+    frame(approach, entryApproach.x, entryApproach.y) +
+    frame(contact, entryContact.x, entryContact.y, 'ease-out') +
+    frame(lift, entryLift.x, entryLift.y, 'ease-in-out') +
+    frame(mount, entryMount.x, entryMount.y, 'ease-out') +
+    frame(walkStart, entryWalk.x, entryWalk.y, 'linear') +
+    frame(middle, floe.x, floe.y) +
+    frame(brace, exitBrace.x, exitBrace.y, 'linear') +
+    frame(push, exitPush.x, exitPush.y, 'ease-in') +
+    frame(air, exitAir.x, exitAir.y, 'ease-out') +
+    frame(impact, exitImpact.x, exitImpact.y, 'ease-in') +
+    frame(splash, exitSplash.x, exitSplash.y, 'ease-out') +
+    frame(depart, exitDepart.x, exitDepart.y) +
     `100%{transform:translate(${width + 40}px,${turtleY}px)}}`
   const body =
     `@keyframes turtle-body{` +
     `0%,${percent(approach)}%{transform:translateY(0) rotate(0) scale(1)}` +
-    bodyFrame(contact, 'translateY(1px) rotate(0) scale(0.98,1.03)') +
-    bodyFrame(lift, 'translateY(2px) rotate(-5deg) scale(1.05,0.92)') +
-    bodyFrame(mount, 'translateY(-3px) rotate(10deg) scale(0.88,1.08)') +
-    bodyFrame(walkStart, 'translateY(0) rotate(-1deg) scale(1.02)') +
-    bodyFrame(step1, 'translateY(-1.4px) rotate(1.4deg) scale(1.03)') +
-    bodyFrame(step2, 'translateY(0) rotate(-1.2deg) scale(1.02)') +
-    bodyFrame(step3, 'translateY(-1.2px) rotate(1.2deg) scale(1.03)') +
-    bodyFrame(brace, 'translateY(2px) rotate(8deg) scale(1.06,0.92)') +
-    bodyFrame(push, 'translateY(3px) rotate(14deg) scale(1.1,0.88)') +
-    bodyFrame(air, 'translateY(-6px) rotate(-16deg) scale(0.88,1.12)') +
-    bodyFrame(impact, 'translateY(2px) rotate(14deg) scale(1.12,0.86)') +
-    bodyFrame(splash, 'translateY(0) rotate(4deg) scale(1.05)') +
+    bodyFrame(contact, `translateY(1px) rotate(${poseAngle(entryHeading)}deg) scale(0.98,1.03)`) +
+    bodyFrame(lift, `translateY(2px) rotate(${poseAngle(entryHeading - 5)}deg) scale(1.05,0.92)`) +
+    bodyFrame(mount, `translateY(-3px) rotate(${poseAngle(entryHeading + 10)}deg) scale(0.88,1.08)`) +
+    bodyFrame(walkStart, `translateY(0) rotate(${poseAngle(walkHeading - 1)}deg) scale(1.02)`) +
+    bodyFrame(step1, `translateY(-1.4px) rotate(${poseAngle(walkHeading + 1.4)}deg) scale(1.03)`) +
+    bodyFrame(step2, `translateY(0) rotate(${poseAngle(walkHeading - 1.2)}deg) scale(1.02)`) +
+    bodyFrame(step3, `translateY(-1.2px) rotate(${poseAngle(walkHeading + 1.2)}deg) scale(1.03)`) +
+    bodyFrame(brace, `translateY(2px) rotate(${poseAngle(exitHeading + 8)}deg) scale(1.06,0.92)`) +
+    bodyFrame(push, `translateY(3px) rotate(${poseAngle(exitHeading + 14)}deg) scale(1.1,0.88)`) +
+    bodyFrame(air, `translateY(-6px) rotate(${poseAngle(exitHeading - 16)}deg) scale(0.88,1.12)`) +
+    bodyFrame(impact, `translateY(2px) rotate(${poseAngle(exitHeading + 14)}deg) scale(1.12,0.86)`) +
+    bodyFrame(splash, `translateY(0) rotate(${poseAngle(exitHeading + 4)}deg) scale(1.05)`) +
     `${percent(depart)}%,100%{transform:translateY(0) rotate(0) scale(1)}}`
   const shadow =
     `@keyframes turtle-shadow{` +
@@ -256,7 +280,7 @@ function turtleChoreography(
     `${percent(splash)}%{opacity:0.24;transform:translate(1px,3px) scale(1.4)}` +
     `${percent(depart)}%,100%{opacity:0.2;transform:translate(0,0) scale(1)}}`
   const limbs =
-    `.paddle-phase{transform-box:fill-box;transform-origin:center;animation-duration:${duration}s;animation-timing-function:linear;animation-iteration-count:infinite}` +
+    `.paddle-phase{transform-box:fill-box;transform-origin:center;animation-duration:${duration}s;animation-delay:${delayCSS};animation-timing-function:linear;animation-iteration-count:infinite}` +
     `.paddle-front-left,.paddle-front-right{animation-name:turtle-front-paddle}` +
     `.paddle-rear-left,.paddle-rear-right{animation-name:turtle-rear-paddle}` +
     `@keyframes turtle-front-paddle{` +
@@ -284,35 +308,50 @@ function turtleChoreography(
   let tracks = `.snow-track{transform-box:fill-box;transform-origin:center;opacity:0}`
   for (let index = 0; index < 8; index++) {
     const localX = (index - 4) * 12
-    const trackProgress = Math.max(0, Math.min(1, (floe.x + localX - (left + 22)) / ((right - 18) - (left + 22))))
+    const trackProgress = Math.max(0, Math.min(1, (floe.x + localX - entryWalk.x) / (exitBrace.x - entryWalk.x)))
     const reveal = walkStart + trackProgress * (brace - walkStart)
     tracks +=
-      `.snow-track-${index}{animation:snow-track-${index} ${duration}s linear infinite}` +
+      `.snow-track-${index}{animation:snow-track-${index} ${duration}s linear infinite;animation-delay:${delayCSS}}` +
       `@keyframes snow-track-${index}{0%,${percent(reveal)}%{opacity:0;transform:scale(0.45)}` +
       `${percent(reveal + 0.7)}%,94%{opacity:0.42;transform:scale(1)}99%,100%{opacity:0;transform:scale(1)}}`
   }
   const splashFrames = (name: string, event: number) =>
     `@keyframes ${name}{0%,${percent(event - 0.2)}%{opacity:0;transform:scale(0.2)}` +
-    `${percent(event + 0.35)}%{opacity:0.5;transform:scale(0.7)}` +
+    `${percent(event + 0.35)}%{opacity:0.68;transform:scale(0.7)}` +
     `${percent(event + 3.2)}%,100%{opacity:0;transform:scale(3.2)}}`
   const entryEvent = lift + 0.8
   const exitEvent = impact
   const splashes =
     `.turtle-splash{transform-box:fill-box;transform-origin:center;opacity:0}` +
-    `.turtle-splash-in{animation:turtle-splash-in ${duration}s linear infinite}` +
-    `.turtle-splash-out{animation:turtle-splash-out ${duration}s linear infinite}` +
+    `.turtle-splash-in{animation:turtle-splash-in ${duration}s linear infinite;animation-delay:${delayCSS}}` +
+    `.turtle-splash-out{animation:turtle-splash-out ${duration}s linear infinite;animation-delay:${delayCSS}}` +
+    `.turtle-impact{transform-box:fill-box;transform-origin:center;opacity:0;animation:turtle-impact ${duration}s linear infinite;animation-delay:${delayCSS}}` +
+    `.turtle-droplet{transform-box:fill-box;transform-origin:center;opacity:0;animation:turtle-droplet ${duration}s linear infinite;animation-delay:${delayCSS}}` +
     splashFrames('turtle-splash-in', entryEvent) +
-    splashFrames('turtle-splash-out', exitEvent)
+    splashFrames('turtle-splash-out', exitEvent) +
+    `@keyframes turtle-impact{0%,${percent(exitEvent - 0.12)}%{opacity:0;transform:scale(0.35)}` +
+    `${percent(exitEvent + 0.22)}%{opacity:0.28;transform:scale(0.82)}` +
+    `${percent(exitEvent + 1.55)}%,100%{opacity:0;transform:scale(2.1)}}` +
+    `@keyframes turtle-droplet{0%,${percent(exitEvent - 0.08)}%{opacity:0;transform:translate(0,0) scale(0.5)}` +
+    `${percent(exitEvent + 0.24)}%{opacity:0.72;transform:translate(var(--mx),var(--my)) scale(1)}` +
+    `${percent(exitEvent + 1.45)}%,100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(0.2)}}`
+  const entryWater = alongNormal(entry, 3)
   const effects =
     `<g data-pond-part="turtle-water-feedback">` +
-    `<circle class="turtle-splash turtle-splash-in" cx="${f1(left - 2)}" cy="${turtleY}" r="6" fill="none" stroke="${ripple}" stroke-width="1.1"/>` +
-    `<circle class="turtle-splash turtle-splash-in" cx="${f1(left - 2)}" cy="${turtleY}" r="10" fill="none" stroke="${ripple}" stroke-width="0.7"/>` +
-    `<circle class="turtle-splash turtle-splash-out" cx="${f1(right + 12)}" cy="${turtleY}" r="6" fill="none" stroke="${ripple}" stroke-width="1.1"/>` +
-    `<circle class="turtle-splash turtle-splash-out" cx="${f1(right + 12)}" cy="${turtleY}" r="10" fill="none" stroke="${ripple}" stroke-width="0.7"/>` +
+    `<circle class="turtle-splash turtle-splash-in" cx="${f1(entryWater.x)}" cy="${f1(entryWater.y)}" r="6" fill="none" stroke="${ripple}" stroke-width="1.2"/>` +
+    `<circle class="turtle-splash turtle-splash-in" cx="${f1(entryWater.x)}" cy="${f1(entryWater.y)}" r="10" fill="none" stroke="${ripple}" stroke-width="0.8"/>` +
+    `<ellipse class="turtle-impact" cx="${f1(exitImpact.x)}" cy="${f1(exitImpact.y)}" rx="8" ry="3" fill="${ripple}"/>` +
+    `<circle class="turtle-splash turtle-splash-out" cx="${f1(exitImpact.x)}" cy="${f1(exitImpact.y)}" r="6" fill="none" stroke="${ripple}" stroke-width="1.4"/>` +
+    `<circle class="turtle-splash turtle-splash-out" cx="${f1(exitImpact.x)}" cy="${f1(exitImpact.y)}" r="10" fill="none" stroke="${ripple}" stroke-width="0.9"/>` +
+    `<circle class="turtle-droplet" style="--mx:-2.8px;--my:-2.1px;--dx:-8px;--dy:-6px" cx="${f1(exitImpact.x - 3)}" cy="${f1(exitImpact.y - 1)}" r="1.2" fill="${ripple}"/>` +
+    `<circle class="turtle-droplet" style="--mx:-1.1px;--my:-3.2px;--dx:-3px;--dy:-9px" cx="${f1(exitImpact.x - 1)}" cy="${f1(exitImpact.y - 2)}" r="1" fill="${ripple}"/>` +
+    `<circle class="turtle-droplet" style="--mx:1.4px;--my:-2.8px;--dx:4px;--dy:-8px" cx="${f1(exitImpact.x + 1)}" cy="${f1(exitImpact.y - 2)}" r="1.1" fill="${ripple}"/>` +
+    `<circle class="turtle-droplet" style="--mx:3.2px;--my:-1.4px;--dx:9px;--dy:-4px" cx="${f1(exitImpact.x + 3)}" cy="${f1(exitImpact.y - 1)}" r="1.2" fill="${ripple}"/>` +
     `</g>`
   return {
     css: motion + body + shadow + limbs + tracks + splashes,
     effects,
+    delay: initialDelay,
   }
 }
 
@@ -392,12 +431,19 @@ export function renderSVG(
       (0.82 + environment.seasonWeights.summer * 0.18) *
       (1 - environment.winterStillness * 0.32)
     : 0.07
-  const shadowShift = environment
-    ? -environment.sunDirection * (12 + environment.goldenLight * 16)
-    : 0
   const surfaceMotion = environment
     ? environment.surfaceActivity * (0.45 + environment.daylight * 0.55)
     : 1
+  const sunElevation = environment
+    ? Math.max(0, Math.min(1, (environment.solarAltitude + 6) / 72))
+    : 0.72
+  const shadowReach = 3 + (1 - sunElevation) * 9
+  const shadowShiftX = environment ? -environment.sunDirection * shadowReach : 0
+  const shadowShiftY = 1 + (1 - sunElevation) * 3
+  const shadowStretch = 1 + (1 - sunElevation) * 0.1
+  const shadowDrift = 1.4 + surfaceMotion * 1.2
+  const floorSoftness = 8 - sunElevation * 2.5
+  const floorOpacityScale = environment ? 0.24 + environment.daylight * 0.56 : 0.8
   const currentPeak = environment
     ? (theme.key === 'light' ? 0.14 : 0.07) *
       (0.42 + surfaceMotion * 0.58) *
@@ -425,6 +471,7 @@ export function renderSVG(
     : undefined
   const turtleRestX = turtleFloe?.x ?? width * 0.58
   const turtleRestY = turtleFloe ? Math.min(turtleY - 6, turtleFloe.y - 2) : turtleY
+  const turtleDelay = `-${f1(turtleScene.delay)}s`
 
   const base = `
 .pk,.rp{transform-box:fill-box;transform-origin:center;animation-duration:${animationDuration}s;animation-timing-function:linear;animation-iteration-count:infinite}
@@ -448,9 +495,9 @@ export function renderSVG(
 .maple-body{transform-box:fill-box;transform-origin:center;animation:maple-body 3.2s ease-in-out infinite alternate}
 .maple-wake{transform-box:fill-box;transform-origin:center;opacity:0;animation:maple-wake 4.2s ease-out infinite}
 .ice-glint{animation:ice-glint 5.8s ease-in-out infinite alternate}
-.turtle{transform:translate(${(width * 0.58).toFixed(1)}px,${turtleY}px);animation:turtle ${turtleDuration}s linear infinite}
-.turtle-body{transform-box:fill-box;transform-origin:center;animation:turtle-body ${turtleDuration}s linear infinite}
-.turtle-shadow{transform-box:fill-box;transform-origin:center;animation:turtle-shadow ${turtleDuration}s linear infinite}
+.turtle{transform:translate(${(width * 0.58).toFixed(1)}px,${turtleY}px);animation:turtle ${turtleDuration}s linear infinite;animation-delay:${turtleDelay}}
+.turtle-body{transform-box:fill-box;transform-origin:center;animation:turtle-body ${turtleDuration}s linear infinite;animation-delay:${turtleDelay}}
+.turtle-shadow{transform-box:fill-box;transform-origin:center;animation:turtle-shadow ${turtleDuration}s linear infinite;animation-delay:${turtleDelay}}
 .night{opacity:0;animation:night ${animationDuration}s linear infinite}
 @keyframes tw{from{opacity:0.06}to{opacity:0.26}}
 @keyframes ray{from{opacity:${rayFloor.toFixed(3)}}to{opacity:${rayPeak.toFixed(3)}}}
@@ -458,7 +505,7 @@ export function renderSVG(
 @keyframes bloom{from{transform:scale(1)}to{transform:scale(1.07)}}
 @keyframes paddle{from{transform:rotate(14deg)}to{transform:rotate(-14deg)}}
 @keyframes ca{from{transform:translate(-26px,0)}to{transform:translate(26px,9px)}}
-@keyframes floor{0%,100%{transform:translate(${(shadowShift - 4).toFixed(1)}px,-1px) scale(0.99)}50%{transform:translate(${(shadowShift + 4).toFixed(1)}px,2px) scale(1.01)}}
+@keyframes floor{0%,100%{transform:translate(${f1(shadowShiftX - shadowDrift)}px,${f1(shadowShiftY - 0.6)}px) scale(${(shadowStretch * 0.99).toFixed(3)},0.99)}50%{transform:translate(${f1(shadowShiftX + shadowDrift)}px,${f1(shadowShiftY + 0.6)}px) scale(${(shadowStretch * 1.01).toFixed(3)},1.01)}}
 @keyframes current{from{transform:translateX(-22px);opacity:${currentFloor.toFixed(3)}}to{transform:translateX(24px);opacity:${currentPeak.toFixed(3)}}}
 @keyframes mo{0%{transform:translate(0,0);opacity:0}15%{opacity:0.55}85%{opacity:0.4}100%{transform:translate(14px,-26px);opacity:0}}
 @keyframes ar{0%{transform:scale(0.2);opacity:0}6%{opacity:0.22}26%,100%{transform:scale(3.6);opacity:0}}
@@ -468,7 +515,7 @@ export function renderSVG(
 @keyframes ice-glint{from{opacity:0.56}to{opacity:0.9}}
 ${turtleScene.css}
 @keyframes night{0%,91%{opacity:0}95%,97.5%{opacity:${theme.night}}100%{opacity:0}}
-@media (prefers-reduced-motion:reduce){*{animation:none!important}.rp,.tw,.mo,.ar,.night,.turtle-splash{opacity:0!important}.floor{opacity:var(--floor-opacity,0.42)!important}.current{opacity:${currentPeak.toFixed(3)}}.ca{opacity:${causticOpacity.toFixed(3)}}.ray{opacity:${rayPeak.toFixed(3)}}.maple{transform:none;opacity:0.9}.snow-track{opacity:0.28!important}.turtle{transform:translate(${f1(turtleRestX)}px,${f1(turtleRestY)}px)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}.rp,.tw,.mo,.ar,.night,.turtle-splash,.turtle-impact,.turtle-droplet{opacity:0!important}.floor{opacity:var(--floor-opacity,0.42)!important}.current{opacity:${currentPeak.toFixed(3)}}.ca{opacity:${causticOpacity.toFixed(3)}}.ray{opacity:${rayPeak.toFixed(3)}}.maple{transform:none;opacity:0.9}.snow-track{opacity:0.28!important}.turtle{transform:translate(${f1(turtleRestX)}px,${f1(turtleRestY)}px)}}
 `
 
   const css = base + bucketCSS + fishKeyframes(plan, animationDuration, context.highlightedCells)
@@ -522,12 +569,13 @@ ${turtleScene.css}
     `<radialGradient id="vig" cx="0.5" cy="0.5" r="0.72">` +
     `<stop offset="0.55" stop-color="rgba(0,0,0,0)"/><stop offset="1" stop-color="${theme.vignette}"/>` +
     `</radialGradient>` +
+    `<filter id="floorSoft" x="-40%" y="-60%" width="180%" height="220%"><feGaussianBlur stdDeviation="${floorSoftness.toFixed(2)}"/></filter>` +
     planktonGlow +
     SOFT_FILTER +
     theme.fishFilter +
     `</defs>` +
     `<rect width="${width}" height="${LAYOUT.height}" rx="10" fill="url(#water)"/>` +
-    floorBlotches(width, r) +
+    floorBlotches(width, r, floorOpacityScale) +
     waterCurrents(width, theme, r) +
     deepShade(width, theme) +
     caustics(width, theme) +

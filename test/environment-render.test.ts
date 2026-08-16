@@ -74,14 +74,31 @@ describe('environment-aware original renderer', () => {
     expect(svg).toContain('data-pond-part="turtle-water-feedback"')
     expect(svg).toContain('class="turtle-body"')
     expect(svg).toContain('class="turtle-shadow"')
+    expect(svg).toContain('class="turtle-scale" transform="scale(1.1)"')
     expect(svg).toContain('class="paddle-phase paddle-front-left"')
     expect(svg).toContain('class="snow-track snow-track-0"')
     expect(svg).toContain('@keyframes turtle-body{')
     expect(svg).toContain('@keyframes turtle-shadow{')
     expect(svg).toContain('@keyframes turtle-front-paddle{')
     expect(svg).toContain('@keyframes turtle-rear-paddle{')
-    expect(svg).toContain('translateY(-6px) rotate(-16deg)')
+    expect(svg).toMatch(/translateY\(-6px\) rotate\(-?\d+(?:\.\d+)?deg\)/)
     expect(svg).toContain('@keyframes turtle-splash-out{')
+    expect(svg).toContain('class="turtle-impact"')
+    expect(svg.match(/class="turtle-droplet"/g)).toHaveLength(4)
+    const turtleDelay = svg.match(/\.turtle\{[^}]*animation-delay:-([\d.]+)s/)?.[1]
+    expect(Number(turtleDelay)).toBeGreaterThan(20)
     expect(svg).toContain('@keyframes snow-track-7{')
+  })
+
+  it('changes background shadow reach and softness with solar height', () => {
+    const morning = deriveEnvironment(momentFromText('2026-10-15', '08:00'), 'autumn')
+    const noon = deriveEnvironment(momentFromText('2026-10-15', '12:00'), 'autumn')
+    const morningSvg = renderSVG(grid, pondPlan, themeForEnvironment(morning), 'seasonal-render', { environment: morning }).svg
+    const noonSvg = renderSVG(grid, pondPlan, themeForEnvironment(noon), 'seasonal-render', { environment: noon }).svg
+    const floorRule = (svg: string) => svg.match(/@keyframes floor\{[^@]+/)?.[0]
+    const floorFilter = (svg: string) => svg.match(/<filter id="floorSoft"[^>]*>.*?<\/filter>/)?.[0]
+
+    expect(floorRule(morningSvg)).not.toBe(floorRule(noonSvg))
+    expect(floorFilter(morningSvg)).not.toBe(floorFilter(noonSvg))
   })
 })

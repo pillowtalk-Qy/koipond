@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import { demoGrid } from '../src/demo'
-import { cellEnergy, desiredPopulation, ecosystemStats, lilyPadLayout, pondObstacleLayout } from '../src/ecology'
+import {
+  cellEnergy,
+  desiredPopulation,
+  ecosystemStats,
+  iceFloeBoundaryPoints,
+  iceFloeLayout,
+  iceFloeSideContact,
+  lilyPadLayout,
+  pondObstacleLayout,
+} from '../src/ecology'
 import { deriveEnvironment, momentFromText } from '../src/environment'
 import { svgWidth } from '../src/layout'
 import { ACTIVE_FRACTION, longestGap, longestStreak, plan } from '../src/planner'
@@ -25,7 +34,7 @@ describe('planner', () => {
     const frozen = plan(grid, 'x', undefined, winter)
     const ice = pondObstacleLayout(svgWidth(grid.weeks), 'x', winter).filter(obstacle => obstacle.kind === 'ice')
     expect(frozen).not.toEqual(regular)
-    expect(ice).toHaveLength(15)
+    expect(ice).toHaveLength(45)
     expect(frozen.eats).toHaveLength(grid.cells.filter(cell => cell.level > 0).length)
     let minimumClearance = Infinity
     for (const fish of frozen.fishes) {
@@ -95,6 +104,19 @@ describe('achievements', () => {
 })
 
 describe('ecology', () => {
+  it('shares deterministic irregular ice edges and outward contact normals', () => {
+    const floe = iceFloeLayout(737, 'ice-contact', 1)[1]
+    const points = iceFloeBoundaryPoints(floe, 'ice-contact', 1)
+    const left = iceFloeSideContact(floe, 'ice-contact', 1, 'left')
+    const right = iceFloeSideContact(floe, 'ice-contact', 1, 'right')
+
+    expect(points).toHaveLength(12)
+    expect(left.x).toBeLessThan(floe.x)
+    expect(right.x).toBeGreaterThan(floe.x)
+    expect((left.x - floe.x) * left.normalX + (left.y - floe.y) * left.normalY).toBeGreaterThan(0)
+    expect((right.x - floe.x) * right.normalX + (right.y - floe.y) * right.normalY).toBeGreaterThan(0)
+  })
+
   it('maps contribution levels to increasing energy', () => {
     const energy = ([0, 1, 2, 3, 4] as const).map(level => cellEnergy({ level }))
     expect(energy).toEqual([0, 1, 2, 4, 7])
@@ -156,6 +178,8 @@ describe('render', () => {
     expect(light).toContain('@keyframes fp0')
     expect(light).toContain('@keyframes floor')
     expect(light).toContain('@keyframes floor{0%,100%')
+    expect(light).toContain('id="floorSoft"')
+    expect(light).toContain('<path class="floor"')
     expect((light.match(/class="floor"/g) ?? []).length).toBe(4)
     expect((light.match(/class="current"/g) ?? []).length).toBe(3)
   })

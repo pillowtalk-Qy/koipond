@@ -30,6 +30,16 @@ export interface IceFloeSpec {
   rotation: number
 }
 
+export interface PondPoint {
+  x: number
+  y: number
+}
+
+export interface IceFloeContactSpec extends PondPoint {
+  normalX: number
+  normalY: number
+}
+
 export interface PondObstacleSpec {
   x: number
   y: number
@@ -110,6 +120,54 @@ export function iceFloeLayout(width: number, seed: string, coverage = 1): IceFlo
   }))
 }
 
+export function iceFloeBoundaryPoints(floe: IceFloeSpec, seed: string, index: number): PondPoint[] {
+  const r = rng(`ice-shape:${seed}:${index}`)
+  return Array.from({ length: 12 }, (_, point) => {
+    const angle = (point / 12) * Math.PI * 2
+    const variance = 0.88 + r() * 0.2
+    return {
+      x: Math.cos(angle) * floe.rx * variance,
+      y: Math.sin(angle) * floe.ry * variance,
+    }
+  })
+}
+
+export function iceFloeWorldBoundaryPoints(floe: IceFloeSpec, seed: string, index: number): PondPoint[] {
+  const angle = (floe.rotation * Math.PI) / 180
+  const cos = Math.cos(angle)
+  const sin = Math.sin(angle)
+  return iceFloeBoundaryPoints(floe, seed, index).map(point => ({
+    x: floe.x + point.x * cos - point.y * sin,
+    y: floe.y + point.x * sin + point.y * cos,
+  }))
+}
+
+export function iceFloeSideContact(
+  floe: IceFloeSpec,
+  seed: string,
+  index: number,
+  side: 'left' | 'right',
+): IceFloeContactSpec {
+  const points = iceFloeWorldBoundaryPoints(floe, seed, index)
+  const contactIndex = points.reduce((best, point, pointIndex) => {
+    const isBetter = side === 'left' ? point.x < points[best].x : point.x > points[best].x
+    return isBetter ? pointIndex : best
+  }, 0)
+  const point = points[contactIndex]
+  const previous = points[(contactIndex - 1 + points.length) % points.length]
+  const next = points[(contactIndex + 1) % points.length]
+  const tangentX = next.x - previous.x
+  const tangentY = next.y - previous.y
+  const tangentLength = Math.hypot(tangentX, tangentY) || 1
+  let normalX = tangentY / tangentLength
+  let normalY = -tangentX / tangentLength
+  if ((point.x - floe.x) * normalX + (point.y - floe.y) * normalY < 0) {
+    normalX *= -1
+    normalY *= -1
+  }
+  return { x: point.x, y: point.y, normalX, normalY }
+}
+
 export function pondObstacleLayout(
   width: number,
   seed: string,
@@ -127,14 +185,20 @@ export function pondObstacleLayout(
       kind: 'lily' as const,
     }))
 
-  const ice = iceFloeLayout(width, seed, environment?.iceCoverage ?? 0).flatMap(floe => {
+  const ice = iceFloeLayout(width, seed, environment?.iceCoverage ?? 0).flatMap((floe, index) => {
     const angle = (floe.rotation * Math.PI) / 180
-    return [-0.72, -0.36, 0, 0.36, 0.72].map(offset => ({
+    const core = [-0.55, 0, 0.55].map(offset => ({
       x: floe.x + Math.cos(angle) * floe.rx * offset,
       y: floe.y + Math.sin(angle) * floe.rx * offset,
-      radius: floe.ry * 0.88,
+      radius: floe.ry * 0.72,
       kind: 'ice' as const,
     }))
+    const edge = iceFloeWorldBoundaryPoints(floe, seed, index).map(point => ({
+      ...point,
+      radius: 2.5,
+      kind: 'ice' as const,
+    }))
+    return [...core, ...edge]
   })
   return [...lilies, ...ice]
 }
