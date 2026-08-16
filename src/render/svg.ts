@@ -1,5 +1,6 @@
 import { LAYOUT, cellCenter, svgWidth } from '../layout'
 import { lilyPadLayout } from '../ecology'
+import type { PondEnvironment } from '../environment'
 import { longestGap, longestStreak } from '../planner'
 import { rng } from '../prng'
 import type { PondProvenance } from '../state'
@@ -15,6 +16,7 @@ import {
   lotus,
   motes,
   pebbles,
+  seasonalDetails,
   surfaceSheen,
   turtle,
   waterCurrents,
@@ -38,6 +40,7 @@ export interface RenderMeta {
 export interface RenderContext {
   provenance?: PondProvenance
   highlightedCells?: ReadonlySet<number>
+  environment?: PondEnvironment
 }
 
 const pct = (t: number, duration: number) => ((t / duration) * 100).toFixed(2)
@@ -48,7 +51,11 @@ const bucketOf = (t: number, duration: number) => {
 }
 const bucketId = (b: number) => b.toFixed(1).replace('.', '_')
 
-function fishKeyframes(plan: Plan, highlightedCells?: ReadonlySet<number>): string {
+function fishKeyframes(
+  plan: Plan,
+  animationDuration: number,
+  highlightedCells?: ReadonlySet<number>,
+): string {
   let css = ''
   for (const f of plan.fishes) {
     const wps = f.waypoints.map(wp => ({ ...wp }))
@@ -114,8 +121,8 @@ function fishKeyframes(plan: Plan, highlightedCells?: ReadonlySet<number>): stri
       .map(([point, opacity]) => `${point}%{opacity:${opacity.toFixed(2)}}`)
 
     css +=
-      `@keyframes fp${f.id}{${entries.join('')}}.f${f.id}{animation:fp${f.id} ${plan.duration}s linear infinite}` +
-      `@keyframes fa${f.id}{${auraEntries.join('')}}.a${f.id}{animation:fa${f.id} ${plan.duration}s linear infinite}`
+      `@keyframes fp${f.id}{${entries.join('')}}.f${f.id}{animation:fp${f.id} ${animationDuration}s linear infinite}` +
+      `@keyframes fa${f.id}{${auraEntries.join('')}}.a${f.id}{animation:fa${f.id} ${animationDuration}s linear infinite}`
   }
   return css
 }
@@ -166,7 +173,10 @@ export function renderSVG(
   context: RenderContext = {},
 ): { svg: string; meta: RenderMeta } {
   const width = svgWidth(grid.weeks)
-  const { duration } = plan
+  const timelineDuration = plan.duration
+  const animationDuration = context.environment
+    ? timelineDuration / context.environment.activityRate
+    : timelineDuration
   const staticTime = bestStaticTime(plan, width, seed)
   const r = rng('decor:' + seed)
 
@@ -180,7 +190,7 @@ export function renderSVG(
     const { x, y } = cellCenter(c.week, c.day)
     const eat = eatByCell.get(c.week * 7 + c.day)
     const highlighted = context.highlightedCells ? context.highlightedCells.has(c.week * 7 + c.day) : true
-    const id = eat ? bucketId(bucketOf(eat.t, duration)) : null
+    const id = eat ? bucketId(bucketOf(eat.t, timelineDuration)) : null
     if (id) eatBuckets.add(id)
     const cls = id ? `pk e${id}` : 'pk'
     const rad = PLANKTON_R[c.level]
@@ -219,7 +229,7 @@ export function renderSVG(
   const lotusX = Math.min(Math.max(LAYOUT.padX + gap.centerWeek * LAYOUT.cell, 34), width - 34)
 
   const base = `
-.pk,.rp{transform-box:fill-box;transform-origin:center;animation-duration:${duration}s;animation-timing-function:linear;animation-iteration-count:infinite}
+.pk,.rp{transform-box:fill-box;transform-origin:center;animation-duration:${animationDuration}s;animation-timing-function:linear;animation-iteration-count:infinite}
 .rp{opacity:0}
 .pt{transform-box:fill-box;transform-origin:center;animation:pec 1.05s ease-in-out infinite}
 .pb{transform-box:fill-box;transform-origin:center;animation:pec 1.05s ease-in-out infinite reverse}
@@ -236,8 +246,9 @@ export function renderSVG(
 .current{opacity:${theme.key === 'light' ? 0.12 : 0.055};animation:current 19s ease-in-out infinite alternate}
 .mo{opacity:0;animation-name:mo;animation-timing-function:linear;animation-iteration-count:infinite}
 .ar{transform-box:fill-box;transform-origin:center;opacity:0;animation:ar 9s linear infinite}
-.turtle{transform:translate(${(width * 0.58).toFixed(1)}px,${turtleY}px);animation:turtle ${duration}s linear infinite}
-.night{opacity:0;animation:night ${duration}s linear infinite}
+.leaf{transform-box:fill-box;transform-origin:center;animation-name:leaf;animation-timing-function:ease-in-out;animation-iteration-count:infinite;animation-direction:alternate}
+.turtle{transform:translate(${(width * 0.58).toFixed(1)}px,${turtleY}px);animation:turtle ${animationDuration}s linear infinite}
+.night{opacity:0;animation:night ${animationDuration}s linear infinite}
 @keyframes tw{from{opacity:0.06}to{opacity:0.26}}
 @keyframes ray{from{opacity:0.07}to{opacity:0.2}}
 @keyframes sway{from{transform:rotate(-2.4deg)}to{transform:rotate(2.6deg)}}
@@ -248,12 +259,13 @@ export function renderSVG(
 @keyframes current{from{transform:translateX(-22px);opacity:${theme.key === 'light' ? 0.07 : 0.035}}to{transform:translateX(24px);opacity:${theme.key === 'light' ? 0.14 : 0.07}}}
 @keyframes mo{0%{transform:translate(0,0);opacity:0}15%{opacity:0.55}85%{opacity:0.4}100%{transform:translate(14px,-26px);opacity:0}}
 @keyframes ar{0%{transform:scale(0.2);opacity:0}6%{opacity:0.22}26%,100%{transform:scale(3.6);opacity:0}}
+@keyframes leaf{from{transform:translate(-3px,-1px) rotate(-8deg)}to{transform:translate(4px,2px) rotate(11deg)}}
 @keyframes turtle{0%{transform:translate(-40px,${turtleY}px)}100%{transform:translate(${width + 40}px,${turtleY}px)}}
 @keyframes night{0%,91%{opacity:0}95%,97.5%{opacity:${theme.night}}100%{opacity:0}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important}.rp,.tw,.mo,.ar,.night{opacity:0!important}.floor{opacity:0.9}.current{opacity:${theme.key === 'light' ? 0.1 : 0.05}}.ca{opacity:0.07}.ray{opacity:0.12}}
 `
 
-  const css = base + bucketCSS + fishKeyframes(plan, context.highlightedCells)
+  const css = base + bucketCSS + fishKeyframes(plan, animationDuration, context.highlightedCells)
 
   const planktonGlow = theme.plankton
     .map(
@@ -270,11 +282,29 @@ export function renderSVG(
   const provenance = context.provenance
     ? `<metadata id="koipond-provenance">${escapeXML(JSON.stringify(context.provenance))}</metadata>`
     : ''
+  const environmentMeta = context.environment
+    ? `<metadata id="koipond-environment">${escapeXML(JSON.stringify(context.environment))}</metadata>`
+    : ''
+  const lotusPresence = context.environment
+    ? Math.min(
+        1,
+        context.environment.seasonWeights.spring * 0.8 +
+          context.environment.seasonWeights.summer +
+          context.environment.seasonWeights.autumn * 0.25 +
+          context.environment.seasonWeights.winter * 0.05,
+      )
+    : 1
+  const turtlePresence = context.environment ? 1 - context.environment.winterStillness * 0.55 : 1
+  const fishPresence = context.environment ? 1 - context.environment.winterStillness * 0.12 : 1
+  const environmentDescription = context.environment
+    ? ` It is ${context.environment.phase} in ${context.environment.season}.`
+    : ''
   const svg =
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${LAYOUT.height}" width="${width}" height="${LAYOUT.height}" role="img" aria-labelledby="kp-title-${theme.key} kp-desc-${theme.key}">` +
     `<title id="kp-title-${theme.key}">${owner ? `${escapeXML(owner)}'s ` : ''}Contribution koi pond</title>` +
-    `<desc id="kp-desc-${theme.key}">${plan.eats.length} contribution plankton grazed by ${plan.fishes.length} fish in a deterministic animated ecosystem${context.provenance ? `, cryptographically linked at revision ${context.provenance.revision}` : ''}.</desc>` +
+    `<desc id="kp-desc-${theme.key}">${plan.eats.length} contribution plankton grazed by ${plan.fishes.length} fish in a deterministic animated ecosystem${context.provenance ? `, cryptographically linked at revision ${context.provenance.revision}` : ''}.${environmentDescription}</desc>` +
     provenance +
+    environmentMeta +
     `<style>${css}</style>` +
     `<defs>` +
     `<linearGradient id="water" x1="0" y1="0" x2="0" y2="1">` +
@@ -309,12 +339,15 @@ export function renderSVG(
     `<g>${planktonEls}</g>` +
     `<g>${rippleEls}</g>` +
     pebbles(theme, r) +
+    (context.environment ? seasonalDetails(width, theme, context.environment, seed, r) : '') +
     `<rect width="${width}" height="${LAYOUT.height}" rx="10" fill="url(#vig)"/>` +
     surfaceSheen(width, theme) +
-    lilyPads(width, theme, seed) +
-    (hasLotus ? lotus(lotusX, theme, r) : '') +
-    (hasTurtle ? turtle(theme) : '') +
-    plan.fishes.map(f => `<g>${fishSVG(f, theme, staticTime, duration)}</g>`).join('') +
+    lilyPads(width, theme, seed, context.environment?.plantCoverage ?? 1) +
+    (hasLotus ? `<g opacity="${lotusPresence.toFixed(3)}">${lotus(lotusX, theme, r)}</g>` : '') +
+    (hasTurtle ? `<g opacity="${turtlePresence.toFixed(3)}">${turtle(theme)}</g>` : '') +
+    `<g opacity="${fishPresence.toFixed(3)}">` +
+    plan.fishes.map(f => `<g>${fishSVG(f, theme, staticTime, timelineDuration)}</g>`).join('') +
+    `</g>` +
     ambientRipples(width, theme, r) +
     motes(width, theme, r) +
     `<rect class="night" width="${width}" height="${LAYOUT.height}" rx="10" fill="#000d14"/>` +
@@ -325,7 +358,7 @@ export function renderSVG(
     meta: {
       plankton: plan.eats.length,
       fish: plan.fishes.length,
-      duration: Math.round(duration * 10) / 10,
+      duration: Math.round(animationDuration * 10) / 10,
       turtle: hasTurtle,
       lotus: hasLotus,
       bytes: new TextEncoder().encode(svg).length,

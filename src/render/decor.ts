@@ -1,6 +1,7 @@
 import { LAYOUT } from '../layout'
 import { lilyPadLayout } from '../ecology'
 import { f1 } from '../util'
+import type { PondEnvironment } from '../environment'
 import type { Theme } from './palette'
 
 /** Shared soft-blur filter used by caustics, god rays and the surface sheen. */
@@ -107,10 +108,68 @@ function lilyPad(x: number, y: number, radius: number, notchDeg: number, theme: 
   )
 }
 
-export function lilyPads(width: number, theme: Theme, seed: string): string {
-  return lilyPadLayout(width, seed)
-    .map(pad => lilyPad(pad.x, pad.y, pad.radius, pad.notchDeg, theme, f1(pad.duration)))
+export function lilyPads(width: number, theme: Theme, seed: string, coverage = 1): string {
+  const pads = lilyPadLayout(width, seed)
+  const visible = Math.max(0, Math.min(1, coverage)) * pads.length
+  return pads
+    .map((pad, index) => {
+      const opacity = Math.max(0, Math.min(1, visible - index))
+      return opacity <= 0
+        ? ''
+        : `<g opacity="${f1(opacity)}">${lilyPad(pad.x, pad.y, pad.radius, pad.notchDeg, theme, f1(pad.duration))}</g>`
+    })
     .join('')
+}
+
+export function seasonalDetails(
+  width: number,
+  theme: Theme,
+  environment: PondEnvironment,
+  seed: string,
+  r: () => number,
+): string {
+  const pads = lilyPadLayout(width, seed)
+  const spring = pads.slice(0, 3).map((pad, index) => {
+    const x = f1(pad.x + pad.radius * (0.35 + index * 0.08))
+    const y = f1(pad.y - pad.radius * 0.25)
+    return `<g transform="translate(${x} ${y})"><ellipse rx="${f1(2.6 + index * 0.3)}" ry="${f1(4.2 + index * 0.4)}" fill="${theme.lotusOuter}" transform="rotate(${index * 28 - 24})"/><circle r="1.1" fill="${theme.lotusHeart}"/></g>`
+  }).join('')
+
+  const summer = pads.slice(2, 5).map((pad, index) => {
+    const x = f1(pad.x - pad.radius * 0.2)
+    const y = f1(pad.y + pad.radius * 0.15)
+    let petals = ''
+    for (let petal = 0; petal < 5; petal++) {
+      petals += `<ellipse rx="3.2" ry="1.25" transform="rotate(${petal * 72})" fill="${theme.lotusInner}"/>`
+    }
+    return `<g class="bloom" style="animation-delay:-${index * 1.3}s" transform="translate(${x} ${y})">${petals}<circle r="1.2" fill="${theme.lotusHeart}"/></g>`
+  }).join('')
+
+  let autumn = ''
+  for (let index = 0; index < 9; index++) {
+    const x = f1(26 + r() * (width - 52))
+    const y = f1(20 + r() * (LAYOUT.height - 40))
+    const size = f1(2.8 + r() * 3.2)
+    autumn +=
+      `<g class="leaf" style="animation-duration:${f1(10 + r() * 8)}s;animation-delay:-${f1(r() * 9)}s" transform="translate(${x} ${y}) rotate(${f1(r() * 360)})">` +
+      `<path d="M-${size} 0 Q0 -${f1(size * 0.72)} ${size} 0 Q0 ${f1(size * 0.72)} -${size} 0Z" fill="${index % 3 === 0 ? theme.lotusOuter : theme.lily}"/>` +
+      `<path d="M-${f1(size * 0.7)} 0 H${f1(size * 0.7)}" stroke="${theme.lilyVein}" stroke-width="0.7"/>` +
+      `</g>`
+  }
+
+  let winter = ''
+  for (let index = 0; index < 6; index++) {
+    const x = f1(34 + r() * (width - 68))
+    const y = f1(7 + r() * 32)
+    winter += `<path d="M${x} ${y} l${f1(-13 + r() * 26)} ${f1(8 + r() * 11)} l${f1(-10 + r() * 20)} ${f1(6 + r() * 9)}" fill="none" stroke="${theme.sheen}" stroke-width="0.8" opacity="0.7"/>`
+  }
+
+  return (
+    `<g aria-label="spring pond growth" opacity="${f1(environment.seasonWeights.spring * 0.82)}">${spring}</g>` +
+    `<g aria-label="summer pond bloom" opacity="${f1(environment.seasonWeights.summer * 0.72)}">${summer}</g>` +
+    `<g aria-label="autumn floating leaves" opacity="${f1(environment.autumnLeaves * 0.82)}">${autumn}</g>` +
+    `<g aria-label="winter surface ice" opacity="${f1(environment.winterStillness * 0.62)}">${winter}</g>`
+  )
 }
 
 export function lotus(x: number, theme: Theme, r: () => number): string {

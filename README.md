@@ -13,7 +13,8 @@
 > [0xydev/koipond](https://github.com/0xydev/koipond). The original concept, visual language,
 > renderer and initial implementation were created by [@0xydev](https://github.com/0xydev).
 > Qy's `original-plus` edition preserves that foundation while adding persistent ecology,
-> replay-safe feeding, verifiable state provenance and restrained water-detail refinements.
+> replay-safe feeding, verifiable state provenance, and a solar-time and four-season environment
+> layered onto the original pond rather than replacing its style or mechanics.
 > See [NOTICE.md](NOTICE.md) for the full attribution.
 
 Turn your GitHub contribution graph into a living koi pond, seen from above.
@@ -47,6 +48,10 @@ The graph does not just feed the fish, it shapes the ecosystem:
 - **A 30+ day streak** earns a pond turtle paddling across. 🐢
 - **A 21+ day quiet stretch** makes a lotus bloom over its center. 🪷
 - **Dark mode is bioluminescent**: an abyssal pond, twinkling plankton, glowing spirit koi.
+- **The original light and dark ponds form one 24-hour cycle**: solar altitude blends the same two
+  palettes through daylight, dawn, dusk and night.
+- **The year moves continuously through four seasons**: the same lily pads, lotus, fish and water
+  respond through plant coverage, bloom, autumn drift, winter stillness and swimming pace.
 
 This `original-plus` branch deliberately keeps the original composition and art direction. Its changes
 are behavioral: the same contribution graph now produces a more causal ecosystem instead of adding
@@ -61,7 +66,9 @@ contains SHA-256 digests of its source calendar, complete state and preceding re
 provenance is embedded in the SVG's `<metadata>` element.
 
 Everything is baked into a self-contained animated SVG (CSS keyframes, no JavaScript), so it works
-anywhere GitHub renders images, including profile READMEs.
+anywhere GitHub renders images, including profile READMEs. Because GitHub does not execute JavaScript
+inside README images, the Action refreshes the solar-time snapshot every hour; the animation itself
+continues locally inside that snapshot.
 
 ## Usage (GitHub Action)
 
@@ -72,14 +79,14 @@ Five minutes, four steps, no local setup:
 2. In that repo, create the file `.github/workflows/koipond.yml` with the workflow below (GitHub
    web UI: Add file, Create new file, paste, commit).
 3. Go to the Actions tab, pick `koipond`, press `Run workflow` once. This generates the first SVGs
-   on an `output` branch. After that it refreshes itself every night.
-4. Paste the `<picture>` snippet below into your README, replacing `<user>/<repo>`.
+   on an `output` branch. After that it refreshes itself every hour.
+4. Paste the `<img>` snippet below into your README, replacing `<user>/<repo>`.
 
 ```yaml
 name: koipond
 on:
   schedule:
-    - cron: "0 3 * * *"
+    - cron: "17 * * * *"
   workflow_dispatch:
 
 permissions:
@@ -89,12 +96,11 @@ jobs:
   generate:
     runs-on: ubuntu-latest
     steps:
-      - uses: pillowtalk-Qy/koipond@7f34d265a11b488c3eb472a4b4bd6bbe975c1d49
+      - uses: pillowtalk-Qy/koipond@main
         with:
           github_user_name: ${{ github.repository_owner }}
           outputs: |
-            dist/koipond-light.svg
-            dist/koipond-dark.svg?theme=dark
+            dist/koipond.svg?environment=auto&timezone=480&latitude=22.3193&longitude=114.1694
       - uses: crazy-max/ghaction-github-pages@df5cc2bfa78282ded844b354faee141f06b41865 # v4
         with:
           target_branch: output
@@ -103,21 +109,19 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-Then embed the generated files in your README so the theme follows the viewer:
+Then embed the generated pond in your README:
 
 ```html
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/<user>/<repo>/output/koipond-dark.svg">
-  <img alt="koipond" src="https://raw.githubusercontent.com/<user>/<repo>/output/koipond-light.svg">
-</picture>
+<img alt="koipond" src="https://raw.githubusercontent.com/<user>/<repo>/output/koipond.svg">
 <br>
-<sub>Contributions feed this pond. Its fish remember. · <a href="https://raw.githubusercontent.com/<user>/<repo>/output/pond-state.json">verify state</a></sub>
+<sub>This pond follows Hong Kong time and season. Contributions feed it; its fish remember. · <a href="https://raw.githubusercontent.com/<user>/<repo>/output/pond-state.json">verify state</a></sub>
 ```
 
 Each `outputs` line accepts options as a query string, and can be a `.svg`, `.gif` or `.mp4`:
 
 ```yaml
 outputs: |
+  dist/koipond.svg?environment=auto&timezone=480&latitude=22.3193&longitude=114.1694
   dist/koipond-light.svg
   dist/koipond-dark.svg?theme=dark
   dist/koipond.gif?theme=dark&fps=10&start=10&dur=8
@@ -127,13 +131,20 @@ outputs: |
 | --- | --- |
 | `theme` | `light` (default) or `dark` |
 | `seed` | Any string, changes fish variety and routes (defaults to the username) |
+| `environment` | Set to `auto` to derive a continuous solar-time and seasonal pond |
+| `timezone` | UTC offset in minutes for the automatic pond (`480` is Hong Kong) |
+| `latitude` | Latitude used to calculate daylight (`22.3193` is Hong Kong) |
+| `longitude` | Longitude used to calculate true solar time (`114.1694` is Hong Kong) |
+| `date` | Optional reproducible date override in `YYYY-MM-DD` form |
+| `time` | Optional reproducible local-time override in `HH:MM` form |
+| `season` | Optional visual test override: `spring`, `summer`, `autumn` or `winter` |
 | `fps` | Video frame rate up to 60 (gif and mp4 only, default 10 for gif, 30 for mp4) |
 | `start` | Capture start time in seconds into the loop (default 0) |
 | `dur` | Capture length in seconds (default: the full loop) |
 | `scale` | Resolution multiplier (default 1 for gif, 2 for mp4) |
 
 The Action also writes `dist/pond-state.json`. Because the workflow publishes the complete `dist`
-directory to `output`, the next nightly run restores it automatically. The optional Action inputs
+directory to `output`, the next hourly run restores it automatically. The optional Action inputs
 `state_file`, `state_branch` and `state_path` change those locations.
 
 The workflow pins Qy's `original-plus` implementation to a full commit SHA for reproducibility.
@@ -172,6 +183,12 @@ Preserve fish identity and growth across local runs:
 npx tsx src/cli.ts --user <login> --state dist/pond-state.json
 ```
 
+Generate the same automatic Hong Kong environment used by the profile workflow:
+
+```sh
+npx tsx src/cli.ts --user <login> --environment --timezone-offset 480 --latitude 22.3193 --longitude 114.1694
+```
+
 Verify a downloaded state independently:
 
 ```sh
@@ -191,6 +208,12 @@ npm run verify:state -- pond-state.json previous-pond-state.json
 | `--demo` | Use generated demo data instead of the API |
 | `--seed` | Override the PRNG seed (defaults to the username) |
 | `--theme` | `light`, `dark` or `both` (default `both`) |
+| `--environment` | Generate one solar-time and season-aware `koipond-auto.svg` |
+| `--date`, `--time` | Optional fixed environment moment for previews or reproducible builds |
+| `--timezone-offset` | UTC offset in minutes (default `480`, Hong Kong) |
+| `--latitude` | Latitude used for solar altitude (default `22.3193`) |
+| `--longitude` | Longitude used for true solar time (default `114.1694`) |
+| `--season` | Optional season override for visual testing |
 | `--out` | Output directory (default `dist`) |
 | `--video` | Also render a `.gif` or `.mp4` of the loop, with the same query options (`pond.mp4?fps=60`) |
 | `--state` | Read and update a persistent pond-state JSON file (optional) |
@@ -204,11 +227,15 @@ npm run verify:state -- pond-state.json previous-pond-state.json
    calendar, complete state and previous revision into an independently verifiable chain.
 3. **Ecology** (`src/ecology.ts`): contribution levels become conserved energy, activity patterns
    become stable ecosystem traits, and lily-pad geometry is shared by rendering and path planning.
-4. **Planner** (`src/planner.ts`): a seeded steering-physics simulation. Fish accelerate under a
+4. **Environment** (`src/environment.ts`): calculates solar altitude from date, local time,
+   latitude, longitude and the equation of time; blends the original light/dark palettes
+   continuously; and derives overlapping seasonal weights rather than switching the whole scene
+   on four hard dates.
+5. **Planner** (`src/planner.ts`): a seeded steering-physics simulation. Fish accelerate under a
    capped force toward their next plankton, change pace with satiety, separate, school, avoid pond
    obstacles and bounce softly off the walls. Deterministic, so the same grid + seed always bakes
    the same film.
-5. **Renderer** (`src/render/svg.ts`): bakes the simulated paths into CSS `@keyframes` (decimated on
+6. **Renderer** (`src/render/svg.ts`): bakes the simulated paths into CSS `@keyframes` (decimated on
    straightaways), draws bodies as delayed trails, and quantizes eat times into 0.5% buckets so
    hundreds of plankton share ~100 keyframe blocks, keeping file size down.
 
@@ -221,6 +248,8 @@ npm run verify:state -- pond-state.json previous-pond-state.json
 - [x] SHA-256 state provenance, SVG metadata and standalone verification
 - [x] GitHub Action packaging with persistent state and query-string options
 - [x] GIF and MP4 output (headless browser capture)
+- [x] Continuous 24-hour light, dawn, dusk and night from the original two palettes
+- [x] Four-season ecology with plant coverage, bloom, drift and winter activity
 - [ ] More species, decor unlocked by achievements, GitLab support
 
 ## Contributing

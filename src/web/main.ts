@@ -1,8 +1,9 @@
 import { gridFromDays, type Day } from '../github'
+import { deriveEnvironment, momentAtTimezone, momentFromText, type PondEnvironment } from '../environment'
 import { plan } from '../planner'
-import { THEMES } from '../render/palette'
+import { THEMES, themeForEnvironment } from '../render/palette'
 import { renderSVG } from '../render/svg'
-import type { Grid } from '../types'
+import type { Grid, Plan } from '../types'
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T
 
@@ -19,11 +20,15 @@ const installNote = $<HTMLSpanElement>('install-note')
 const repoLink = $<HTMLAnchorElement>('repo-link')
 const snippet = $<HTMLElement>('snippet')
 const copy = $<HTMLButtonElement>('copy')
+const live = $<HTMLInputElement>('live')
+const date = $<HTMLInputElement>('date')
+const time = $<HTMLInputElement>('time')
+const momentLabel = $<HTMLSpanElement>('moment-label')
 
 const workflowFor = () => `name: koipond
 on:
   schedule:
-    - cron: "0 3 * * *"
+    - cron: "17 * * * *"
   workflow_dispatch:
 
 permissions:
@@ -33,12 +38,11 @@ jobs:
   generate:
     runs-on: ubuntu-latest
     steps:
-      - uses: pillowtalk-Qy/koipond@7f34d265a11b488c3eb472a4b4bd6bbe975c1d49
+      - uses: pillowtalk-Qy/koipond@main
         with:
           github_user_name: ${'$'}{{ github.repository_owner }}
           outputs: |
-            dist/koipond-light.svg
-            dist/koipond-dark.svg?theme=dark
+            dist/koipond.svg?environment=auto&timezone=480&latitude=22.3193&longitude=114.1694
       - uses: crazy-max/ghaction-github-pages@df5cc2bfa78282ded844b354faee141f06b41865 # v4
         with:
           target_branch: output
@@ -47,12 +51,9 @@ jobs:
           GITHUB_TOKEN: ${'$'}{{ secrets.GITHUB_TOKEN }}
 `
 
-const snippetFor = (user: string) => `<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/${user}/${user}/output/koipond-dark.svg">
-  <img alt="koipond" src="https://raw.githubusercontent.com/${user}/${user}/output/koipond-light.svg">
-</picture>
+const snippetFor = (user: string) => `<img alt="koipond" src="https://raw.githubusercontent.com/${user}/${user}/output/koipond.svg">
 <br>
-<sub>Contributions feed this pond. Its fish remember. · <a href="https://raw.githubusercontent.com/${user}/${user}/output/pond-state.json">verify state</a></sub>`
+<sub>This pond follows Hong Kong time and season. Contributions feed it; its fish remember. · <a href="https://raw.githubusercontent.com/${user}/${user}/output/pond-state.json">verify state</a></sub>`
 
 function fillInstall(user: string) {
   const params = new URLSearchParams({
@@ -77,22 +78,56 @@ async function fetchGrid(user: string): Promise<Grid> {
   return gridFromDays(json.contributions)
 }
 
-const svgs: Record<'light' | 'dark', string> = { light: '', dark: '' }
-let active: 'light' | 'dark' = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+type ViewMode = 'auto' | 'light' | 'dark'
 
-function show(theme: 'light' | 'dark') {
-  active = theme
-  pond.innerHTML = svgs[theme]
+const svgs: Record<ViewMode, string> = { auto: '', light: '', dark: '' }
+let active: ViewMode = 'auto'
+let currentGrid: Grid | null = null
+let currentPlan: Plan | null = null
+let currentUser = ''
+
+const pad = (value: number) => String(value).padStart(2, '0')
+
+function updateLiveInputs() {
+  const moment = momentAtTimezone(new Date())
+  date.value = `${moment.year}-${pad(moment.month)}-${pad(moment.day)}`
+  time.value = `${pad(Math.floor(moment.minuteOfDay / 60))}:${pad(moment.minuteOfDay % 60)}`
+}
+
+function selectedEnvironment(): PondEnvironment {
+  return deriveEnvironment(momentFromText(date.value, time.value))
+}
+
+function renderAuto() {
+  if (!currentGrid || !currentPlan) return
+  if (live.checked) updateLiveInputs()
+  const environment = selectedEnvironment()
+  svgs.auto = renderSVG(
+    currentGrid,
+    currentPlan,
+    themeForEnvironment(environment),
+    currentUser,
+    { environment },
+  ).svg
+  const clock = `${pad(Math.floor(environment.minuteOfDay / 60))}:${pad(environment.minuteOfDay % 60)}`
+  momentLabel.textContent = `${environment.date} · ${clock} HKT · ${environment.season} · ${environment.phase}`
+}
+
+function show(mode: ViewMode) {
+  active = mode
+  if (mode === 'auto') renderAuto()
+  pond.innerHTML = svgs[mode]
   const svg = pond.querySelector('svg')
   if (svg) {
     svg.removeAttribute('width')
     svg.removeAttribute('height')
   }
-  download.href = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svgs[theme])))}`
-  download.download = `koipond-${theme}.svg`
+  download.href = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svgs[mode])))}`
+  download.download = `koipond-${mode}.svg`
   for (const b of tabs.querySelectorAll('button')) {
-    b.classList.toggle('on', b.dataset.theme === theme)
+    b.classList.toggle('on', b.dataset.theme === mode)
   }
+  document.body.classList.toggle('fixed-environment', mode !== 'auto')
 }
 
 async function generate(user: string) {
@@ -102,8 +137,12 @@ async function generate(user: string) {
   try {
     const grid = await fetchGrid(user)
     const p = plan(grid, user)
+    currentGrid = grid
+    currentPlan = p
+    currentUser = user
     svgs.light = renderSVG(grid, p, THEMES.light, user).svg
     svgs.dark = renderSVG(grid, p, THEMES.dark, user).svg
+    renderAuto()
     status.textContent = ''
     result.hidden = false
     show(active)
@@ -134,8 +173,20 @@ document.querySelectorAll<HTMLButtonElement>('.chip').forEach(chip => {
 
 tabs.addEventListener('click', e => {
   const b = (e.target as HTMLElement).closest('button')
-  if (b?.dataset.theme) show(b.dataset.theme as 'light' | 'dark')
+  if (b?.dataset.theme) show(b.dataset.theme as ViewMode)
 })
+
+live.addEventListener('change', () => {
+  if (live.checked) updateLiveInputs()
+  if (active === 'auto') show('auto')
+})
+
+for (const control of [date, time]) {
+  control.addEventListener('input', () => {
+    live.checked = false
+    if (active === 'auto') show('auto')
+  })
+}
 
 copy.addEventListener('click', () => {
   void navigator.clipboard.writeText(snippet.textContent ?? '').then(() => {
@@ -147,6 +198,10 @@ copy.addEventListener('click', () => {
 })
 
 const preset = new URLSearchParams(location.search).get('user')
+updateLiveInputs()
+setInterval(() => {
+  if (live.checked && active === 'auto' && currentGrid) show('auto')
+}, 60_000)
 if (preset) {
   input.value = preset
   void generate(preset)

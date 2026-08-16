@@ -2,10 +2,11 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { parseArgs } from 'node:util'
 import { demoGrid } from './demo'
+import { environmentFromParams } from './environment-query'
 import { fetchGrid, fetchGridPublic } from './github'
 import { plan } from './planner'
-import { THEMES } from './render/palette'
-import { renderSVG } from './render/svg'
+import { THEMES, themeForEnvironment } from './render/palette'
+import { renderSVG, type RenderContext } from './render/svg'
 import { finalizePondState, highlightedCells, preparePondState, provenanceFor, serializePondState } from './state'
 import { parseVideoQuery, renderVideo } from './video'
 import type { Grid } from './types'
@@ -20,6 +21,13 @@ const { values } = parseArgs({
     out: { type: 'string', default: 'dist' },
     video: { type: 'string' },
     state: { type: 'string' },
+    environment: { type: 'boolean', default: false },
+    date: { type: 'string' },
+    time: { type: 'string' },
+    'timezone-offset': { type: 'string' },
+    latitude: { type: 'string' },
+    longitude: { type: 'string' },
+    season: { type: 'string' },
   },
 })
 
@@ -47,7 +55,20 @@ if (values.demo) {
   }
 }
 
-const themes = values.theme === 'both' ? (['light', 'dark'] as const) : ([values.theme] as ('light' | 'dark')[])
+const environmentParams = new URLSearchParams()
+if (values.environment) environmentParams.set('environment', 'auto')
+if (values.date) environmentParams.set('date', values.date)
+if (values.time) environmentParams.set('time', values.time)
+if (values['timezone-offset']) environmentParams.set('timezone', values['timezone-offset'])
+if (values.latitude) environmentParams.set('latitude', values.latitude)
+if (values.longitude) environmentParams.set('longitude', values.longitude)
+if (values.season) environmentParams.set('season', values.season)
+const environment = environmentFromParams(environmentParams)
+const themes = environment
+  ? (['auto'] as const)
+  : values.theme === 'both'
+    ? (['light', 'dark'] as const)
+    : ([values.theme] as ('light' | 'dark')[])
 let previousState: unknown = null
 if (values.state && existsSync(values.state)) {
   try {
@@ -65,14 +86,15 @@ const p = nextState ? plan(grid, seed, nextState.fish) : feedingPlan
 mkdirSync(values.out, { recursive: true })
 const outputs: Record<string, string> = {}
 for (const key of themes) {
-  const theme = THEMES[key]
+  const theme = environment ? themeForEnvironment(environment) : THEMES[key as 'light' | 'dark']
   if (!theme) {
     console.error(`Unknown theme: ${key} (expected light | dark | both)`)
     process.exit(1)
   }
-  const context = nextState
+  const context: RenderContext = nextState
     ? { provenance: provenanceFor(nextState), highlightedCells: highlightedCells(grid, nextState) }
-    : undefined
+    : {}
+  context.environment = environment
   const { svg, meta } = renderSVG(grid, p, theme, seed, context)
   const file = join(values.out, `koipond-${key}.svg`)
   writeFileSync(file, svg)
@@ -86,7 +108,14 @@ for (const key of themes) {
 if (values.video) {
   const [file, query] = values.video.split('?')
   const key = file.includes('dark') && outputs.dark ? 'dark' : themes[0]
-  await renderVideo(outputs[key], file, p.duration, parseVideoQuery(query))
+  const loopDuration = renderSVG(
+    grid,
+    p,
+    environment ? themeForEnvironment(environment) : THEMES[key as 'light' | 'dark'],
+    seed,
+    { environment },
+  ).meta.duration
+  await renderVideo(outputs[key], file, loopDuration, parseVideoQuery(query))
   console.log(`${file}  rendered from the ${key} theme`)
 }
 

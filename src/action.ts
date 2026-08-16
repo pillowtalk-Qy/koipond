@@ -1,10 +1,11 @@
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'
+import { environmentFromParams } from './environment-query'
 import { fetchGrid, fetchGridPublic, fetchWithRetry } from './github'
 import { plan } from './planner'
 import { fetchPublishedPondState } from './published-state'
-import { THEMES } from './render/palette'
-import { renderSVG } from './render/svg'
+import { THEMES, themeForEnvironment } from './render/palette'
+import { renderSVG, type RenderContext } from './render/svg'
 import { parseVideoQuery, renderVideo } from './video'
 import {
   finalizePondState,
@@ -80,13 +81,16 @@ for (const line of outputs) {
   }
   const params = new URLSearchParams(query ?? '')
   const themeKey = params.get('theme') === 'dark' ? 'dark' : 'light'
+  const environment = environmentFromParams(params)
+  const theme = environment ? themeForEnvironment(environment) : THEMES[themeKey]
   const seed = params.get('seed') ?? user
   const p = planFor(seed)
-  const context =
+  const context: RenderContext =
     seed === user
       ? { provenance: provenanceFor(nextState), highlightedCells: highlightedCells(grid, nextState) }
-      : undefined
-  const { svg, meta } = renderSVG(grid, p, THEMES[themeKey], seed, context)
+      : {}
+  context.environment = environment
+  const { svg, meta } = renderSVG(grid, p, theme, seed, context)
   mkdirSync(dirname(file) || '.', { recursive: true })
   if (kind === 'svg') {
     writeFileSync(file, svg)
@@ -95,7 +99,7 @@ for (const line of outputs) {
         `${meta.duration}s loop${meta.turtle ? ', turtle' : ''}${meta.lotus ? ', lotus' : ''}`,
     )
   } else {
-    await renderVideo(svg, file, p.duration, parseVideoQuery(query))
+    await renderVideo(svg, file, meta.duration, parseVideoQuery(query))
     console.log(`${file}  rendered from a ${meta.duration}s loop`)
   }
 }

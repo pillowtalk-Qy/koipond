@@ -11,7 +11,9 @@ inputs:
   outputs:
     description: >
       Files to generate, one per line. Each line can be customized with a query
-      string. Supported options: theme=light|dark, seed=<any string>
+      string. Supported options: theme=light|dark, seed=<any string>,
+      environment=auto, date=YYYY-MM-DD, time=HH:MM, timezone=<UTC minutes>,
+      latitude=<degrees>, longitude=<degrees>, season=spring|summer|autumn|winter
     required: false
     default: |
       dist/koipond-light.svg

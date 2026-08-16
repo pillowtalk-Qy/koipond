@@ -1,0 +1,33 @@
+import { describe, expect, it } from 'vitest'
+import { deriveEnvironment, momentAtTimezone, momentFromText } from '../src/environment'
+
+describe('pond environment', () => {
+  it('tracks the Hong Kong solar day', () => {
+    const noon = deriveEnvironment(momentFromText('2026-06-21', '12:00'))
+    const midnight = deriveEnvironment(momentFromText('2026-06-21', '00:00'))
+    expect(noon.phase).toBe('day')
+    expect(noon.daylight).toBe(1)
+    expect(midnight.phase).toBe('night')
+    expect(midnight.daylight).toBe(0)
+  })
+
+  it('blends seasons continuously and reverses them by hemisphere', () => {
+    const north = deriveEnvironment(momentFromText('2026-07-15', '12:00', 480, 35))
+    const south = deriveEnvironment(momentFromText('2026-07-15', '12:00', 600, -35))
+    expect(north.season).toBe('summer')
+    expect(south.season).toBe('winter')
+    expect(Object.values(north.seasonWeights).reduce((sum, value) => sum + value, 0)).toBeCloseTo(1, 2)
+  })
+
+  it('uses an explicit timezone without depending on the runner locale', () => {
+    const moment = momentAtTimezone(new Date('2026-08-16T01:30:00Z'), 480, 22.3193)
+    expect(moment.minuteOfDay).toBe(9 * 60 + 30)
+    expect(moment.day).toBe(16)
+  })
+
+  it('supports deterministic season previews', () => {
+    const environment = deriveEnvironment(momentFromText('2026-08-16', '12:00'), 'winter')
+    expect(environment.season).toBe('winter')
+    expect(environment.seasonWeights.winter).toBe(1)
+  })
+})
