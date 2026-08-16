@@ -1,16 +1,28 @@
 # koipond 🎏
 
-[![ci](https://github.com/0xydev/koipond/actions/workflows/ci.yml/badge.svg)](https://github.com/0xydev/koipond/actions/workflows/ci.yml)
-[![Marketplace](https://img.shields.io/badge/GitHub%20Marketplace-Contribution%20Koi%20Pond-2088FF?logo=githubactions&logoColor=white)](https://github.com/marketplace/actions/contribution-koi-pond)
+[![ci](https://github.com/pillowtalk-Qy/koipond/actions/workflows/ci.yml/badge.svg)](https://github.com/pillowtalk-Qy/koipond/actions/workflows/ci.yml)
+[![upstream](https://img.shields.io/badge/upstream-0xydev%2Fkoipond-2f81f7?logo=github)](https://github.com/0xydev/koipond)
 [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-339933?logo=nodedotjs&logoColor=white)](https://nodejs.org/)
 [![Vitest](https://img.shields.io/badge/Vitest-6E9F18?logo=vitest&logoColor=white)](https://vitest.dev/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](#contributing)
 
+> [!IMPORTANT]
+> **Project lineage:** this repository is derived from
+> [0xydev/koipond](https://github.com/0xydev/koipond). The original concept, visual language,
+> renderer and initial implementation were created by [@0xydev](https://github.com/0xydev).
+> Qy's `original-plus` edition preserves that foundation while adding persistent ecology,
+> replay-safe feeding, verifiable state provenance and restrained water-detail refinements.
+> See [NOTICE.md](NOTICE.md) for the full attribution.
+
 Turn your GitHub contribution graph into a living koi pond, seen from above.
 
-**Try it live with your own username: [0xydev.github.io/koipond](https://0xydev.github.io/koipond)**
+**Try Qy's persistent edition with any public username:
+[pillowtalk-Qy.github.io/koipond](https://pillowtalk-qy.github.io/koipond/)**
+
+The original edition remains available at
+[0xydev.github.io/koipond](https://0xydev.github.io/koipond/).
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="assets/demo-dark.svg">
@@ -77,7 +89,7 @@ jobs:
   generate:
     runs-on: ubuntu-latest
     steps:
-      - uses: <user>/koipond@original-plus
+      - uses: pillowtalk-Qy/koipond@7f34d265a11b488c3eb472a4b4bd6bbe975c1d49
         with:
           github_user_name: ${{ github.repository_owner }}
           outputs: |
@@ -124,8 +136,9 @@ The Action also writes `dist/pond-state.json`. Because the workflow publishes th
 directory to `output`, the next nightly run restores it automatically. The optional Action inputs
 `state_file`, `state_branch` and `state_path` change those locations.
 
-The workflow above assumes this `original-plus` source has been published to `<user>/koipond`.
-Pin the `uses:` line to a full commit SHA after publishing it for the strongest supply-chain guarantee.
+The workflow pins Qy's `original-plus` implementation to a full commit SHA for reproducibility.
+To use the original edition instead, follow the setup guide in
+[0xydev/koipond](https://github.com/0xydev/koipond#usage-github-action).
 
 GIF and MP4 outputs use a headless Chromium browser and ffmpeg. Both are preinstalled on GitHub
 runners, so they just work in the Action. Locally you need Chrome or Edge plus ffmpeg on PATH.
@@ -133,7 +146,7 @@ runners, so they just work in the Action. Locally you need Chrome or Edge plus f
 ## Quick start
 
 ```sh
-git clone https://github.com/0xydev/koipond.git
+git clone https://github.com/pillowtalk-Qy/koipond.git
 cd koipond
 npm install
 npm run demo          # generates dist/koipond-{light,dark}.svg + dist/preview.html
@@ -227,4 +240,5 @@ New species, decor, themes and achievement rules are all good first issues: spec
 
 ## License
 
-[MIT](LICENSE)
+This derivative remains available under the [MIT License](LICENSE). The original copyright notice
+for 0xydev is preserved. See [NOTICE.md](NOTICE.md) for project lineage and modification scope.

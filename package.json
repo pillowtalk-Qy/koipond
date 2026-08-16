@@ -6,7 +6,11 @@
   "description": "Turn your GitHub contribution graph into a living koi pond where fish graze your commits as plankton.",
   "license": "MIT",
   "author": "0xydev",
-  "repository": "github:0xydev/koipond",
+  "contributors": [
+    "pillowtalk-Qy"
+  ],
+  "repository": "github:pillowtalk-Qy/koipond",
+  "homepage": "https://pillowtalk-qy.github.io/koipond/",
   "keywords": [
     "github",
     "contribution-graph",

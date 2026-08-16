@@ -20,7 +20,7 @@ const repoLink = $<HTMLAnchorElement>('repo-link')
 const snippet = $<HTMLElement>('snippet')
 const copy = $<HTMLButtonElement>('copy')
 
-const workflowFor = (user: string) => `name: koipond
+const workflowFor = () => `name: koipond
 on:
   schedule:
     - cron: "0 3 * * *"
@@ -33,7 +33,7 @@ jobs:
   generate:
     runs-on: ubuntu-latest
     steps:
-      - uses: ${user}/koipond@original-plus
+      - uses: pillowtalk-Qy/koipond@7f34d265a11b488c3eb472a4b4bd6bbe975c1d49
         with:
           github_user_name: ${'$'}{{ github.repository_owner }}
           outputs: |
@@ -57,7 +57,7 @@ const snippetFor = (user: string) => `<picture>
 function fillInstall(user: string) {
   const params = new URLSearchParams({
     filename: '.github/workflows/koipond.yml',
-    value: workflowFor(user),
+    value: workflowFor(),
   })
   installLink.href = `https://github.com/${user}/${user}/new/main?${params}`
   installNote.textContent = `opens ${user}/${user} prefilled, just press commit`
