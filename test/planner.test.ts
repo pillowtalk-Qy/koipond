@@ -155,6 +155,7 @@ describe('render', () => {
     expect(light).toContain('<svg')
     expect(light).toContain('@keyframes fp0')
     expect(light).toContain('@keyframes floor')
+    expect(light).toContain('@keyframes floor{0%,100%')
     expect((light.match(/class="floor"/g) ?? []).length).toBe(4)
     expect((light.match(/class="current"/g) ?? []).length).toBe(3)
   })

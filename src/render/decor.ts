@@ -13,9 +13,10 @@ export function floorBlotches(width: number, r: () => number): string {
   for (let i = 0; i < 4; i++) {
     const x = f1(width * (0.12 + r() * 0.76))
     const y = f1(30 + r() * (LAYOUT.height - 60))
-    const duration = f1(16 + r() * 9)
-    const delay = f1(r() * 14)
-    out += `<ellipse class="floor" style="animation-duration:${duration}s;animation-delay:-${delay}s" cx="${x}" cy="${y}" rx="${f1(76 + r() * 96)}" ry="${f1(28 + r() * 25)}" fill="url(#floorG)" filter="url(#soft)"/>`
+    const duration = f1(24 + r() * 10)
+    const delay = f1(r() * 18)
+    const opacity = f1(0.34 + r() * 0.18)
+    out += `<ellipse class="floor" style="--floor-opacity:${opacity};animation-duration:${duration}s;animation-delay:-${delay}s" cx="${x}" cy="${y}" rx="${f1(54 + r() * 72)}" ry="${f1(17 + r() * 18)}" fill="url(#floorG)" filter="url(#soft)"/>`
   }
   return out
 }
@@ -67,8 +68,9 @@ export function surfaceSheen(width: number, theme: Theme, intensity = 1): string
 
 /** Darkening toward the bottom for depth. */
 export function deepShade(width: number, theme: Theme): string {
-  const height = theme.key === 'light' ? 56 : 74
-  return `<rect y="${LAYOUT.height - height}" width="${width}" height="${height}" fill="url(#deepG)"/>`
+  const height = theme.key === 'light' ? 48 : 66
+  const opacity = theme.key === 'light' ? 0.68 : 0.82
+  return `<rect y="${LAYOUT.height - height}" width="${width}" height="${height}" fill="url(#deepG)" opacity="${opacity}"/>`
 }
 
 export function caustics(width: number, theme: Theme): string {
@@ -316,16 +318,16 @@ export function ambientRipples(width: number, theme: Theme, r: () => number, cou
 }
 
 export function turtle(theme: Theme): string {
-  const flipper = (x: number, y: number, deg: number, delay: number) =>
-    `<g transform="rotate(${deg} ${x} ${y})"><ellipse class="paddle" style="animation-delay:${delay}s" cx="${x}" cy="${y}" rx="4.4" ry="1.9" fill="${theme.turtleSkin}"/></g>`
+  const flipper = (name: string, x: number, y: number, deg: number, delay: number) =>
+    `<g transform="rotate(${deg} ${x} ${y})"><g class="paddle-phase ${name}"><ellipse class="paddle" style="animation-delay:${delay}s" cx="${x}" cy="${y}" rx="4.4" ry="1.9" fill="${theme.turtleSkin}"/></g></g>`
   return (
     `<g class="turtle">` +
     `<ellipse class="turtle-shadow" cx="2.5" cy="4" rx="11.5" ry="10" fill="rgba(0,20,25,0.2)"/>` +
     `<g class="turtle-body">` +
-    flipper(-7, -8, -38, 0) +
-    flipper(-7, 8, 38, -0.65) +
-    flipper(6, -8.5, 32, -0.65) +
-    flipper(6, 8.5, -32, 0) +
+    flipper('paddle-front-left', -7, -8, -38, 0) +
+    flipper('paddle-rear-left', -7, 8, 38, -0.65) +
+    flipper('paddle-front-right', 6, -8.5, 32, -0.65) +
+    flipper('paddle-rear-right', 6, 8.5, -32, 0) +
     `<ellipse cx="-11.5" cy="0" rx="2.2" ry="1.6" fill="${theme.turtleSkin}"/>` +
     `<circle cx="12.5" cy="0" r="3.4" fill="${theme.turtleSkin}"/>` +
     `<circle r="10" fill="${theme.turtleShell}"/>` +
