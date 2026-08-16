@@ -183,7 +183,6 @@ function turtleChoreography(
     ? iceFloeLayout(width, seed, environment.iceCoverage)[1]
     : undefined
   if (!floe) {
-    const initialDelay = ((width * 0.18 + 40) / (width + 80)) * duration
     return {
       css:
         `@keyframes turtle{0%{transform:translate(-40px,${turtleY}px)}100%{transform:translate(${width + 40}px,${turtleY}px)}}` +
@@ -191,7 +190,7 @@ function turtleChoreography(
         `@keyframes turtle-shadow{0%,100%{opacity:0.18;transform:scale(1)}50%{opacity:0.14;transform:scale(0.94)}}` +
         `.snow-track{opacity:0}`,
       effects: '',
-      delay: initialDelay,
+      delay: 0,
     }
   }
   const percentAt = (x: number) => Math.max(0, Math.min(100, ((x + 40) / (width + 80)) * 100))
@@ -202,20 +201,24 @@ function turtleChoreography(
     contact: typeof entry,
     distance: number,
   ) => ({ x: contact.x + contact.normalX * distance, y: contact.y + contact.normalY * distance })
+  const waterPoint = (contact: typeof entry, distance: number, maxY: number) => {
+    const point = alongNormal(contact, distance)
+    return { ...point, y: Math.max(30, Math.min(maxY, point.y)) }
+  }
   const clampHeading = (value: number) => Math.max(-12, Math.min(12, value))
   const heading = (x: number, y: number) => clampHeading((Math.atan2(y, x) * 180) / Math.PI)
   const poseAngle = (value: number) => f1(Math.max(-20, Math.min(20, value)))
-  const entryApproach = alongNormal(entry, 34)
-  const entryContact = alongNormal(entry, 16)
-  const entryLift = alongNormal(entry, 7)
+  const entryApproach = waterPoint(entry, 34, turtleY - 6)
+  const entryContact = waterPoint(entry, 16, turtleY - 2)
+  const entryLift = waterPoint(entry, 7, turtleY - 4)
   const entryMount = alongNormal(entry, -10)
   const entryWalk = alongNormal(entry, -24)
   const exitBrace = alongNormal(exit, -25)
   const exitPush = alongNormal(exit, -11)
-  const exitAir = alongNormal(exit, 2)
-  const exitImpact = alongNormal(exit, 12)
-  const exitSplash = alongNormal(exit, 19)
-  const exitDepart = alongNormal(exit, 43)
+  const exitAir = waterPoint(exit, 2, turtleY - 6)
+  const exitImpact = waterPoint(exit, 12, turtleY - 2)
+  const exitSplash = waterPoint(exit, 19, turtleY - 4)
+  const exitDepart = waterPoint(exit, 43, turtleY - 6)
   const entryHeading = heading(-entry.normalX, -entry.normalY)
   const walkHeading = heading(exitBrace.x - entryWalk.x, exitBrace.y - entryWalk.y)
   const exitHeading = heading(exit.normalX, exit.normalY)
@@ -417,8 +420,7 @@ export function renderSVG(
 
   const streak = longestStreak(grid)
   const gap = longestGap(grid)
-  const hasTurtle = true
-  const hasTurtleTrail = streak >= TURTLE_STREAK
+  const hasTurtle = streak >= TURTLE_STREAK
   const hasLotus = gap.len >= LOTUS_GAP
   const turtleY = LAYOUT.height - 26
   const lotusX = Math.min(Math.max(LAYOUT.padX + gap.centerWeek * LAYOUT.cell, 34), width - 34)
@@ -594,7 +596,7 @@ ${turtleScene.css}
       : '') +
     plan.fishes.map(f => `<g>${fishSVG(f, theme, staticTime, timelineDuration)}</g>`).join('') +
     autumnMapleLeaves(width, theme, seed, environment?.mapleDrift ?? 0) +
-    winterIce(width, theme, seed, environment?.iceCoverage ?? 0, hasTurtleTrail) +
+    winterIce(width, theme, seed, environment?.iceCoverage ?? 0, hasTurtle) +
     (hasTurtle ? turtleScene.effects + turtle(theme) : '') +
     ambientRipples(width, theme, r, ambientRippleCount) +
     motes(width, theme, r, moteCount) +

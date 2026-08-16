@@ -108,7 +108,7 @@ export function iceFloeLayout(width: number, seed: string, coverage = 1): IceFlo
   const scale = 0.58 + visibleCoverage * 0.42
   const specs: Array<[number, number, number, number, number]> = [
     [width * 0.27, 58, 50, 21, -8],
-    [width * 0.58, LAYOUT.height - 31, 64, 22, 4],
+    [width * 0.58, LAYOUT.height - 50, 64, 22, 4],
     [width * 0.81, 76, 40, 18, -11],
   ]
   return specs.map(([x, y, rx, ry, rotation]) => ({

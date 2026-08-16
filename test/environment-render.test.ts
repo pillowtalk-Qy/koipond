@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { demoGrid } from '../src/demo'
 import { deriveEnvironment, momentFromText } from '../src/environment'
-import { svgWidth } from '../src/layout'
-import { longestStreak, plan } from '../src/planner'
+import { plan } from '../src/planner'
 import { THEMES, themeForEnvironment } from '../src/render/palette'
 import { renderSVG } from '../src/render/svg'
 
@@ -56,38 +55,6 @@ describe('environment-aware original renderer', () => {
     expect(pondPlan.fishes.every(fish => autumnSvg.includes(`@keyframes fp${fish.id}`))).toBe(true)
   })
 
-  it('keeps the resident turtle visible on first paint without a 30-day streak', () => {
-    const residentGrid = {
-      ...grid,
-      cells: grid.cells.map((cell, index) => ({
-        ...cell,
-        count: index % 40 === 0 ? 1 : 0,
-        level: (index % 40 === 0 ? 1 : 0) as 0 | 1,
-      })),
-    }
-    const summer = deriveEnvironment(momentFromText('2026-07-15', '12:00'), 'summer')
-    const residentPlan = plan(residentGrid, 'resident-turtle', undefined, summer)
-    const { svg, meta } = renderSVG(
-      residentGrid,
-      residentPlan,
-      themeForEnvironment(summer),
-      'resident-turtle',
-      { environment: summer },
-    )
-    const animation = svg.match(/animation:turtle ([\d.]+)s linear infinite;animation-delay:-([\d.]+)s/)
-    const duration = Number(animation?.[1])
-    const delay = Number(animation?.[2])
-    const width = svgWidth(residentGrid.weeks)
-    const initialX = -40 + (width + 80) * (delay / duration)
-
-    expect(longestStreak(residentGrid)).toBeLessThan(30)
-    expect(meta.turtle).toBe(true)
-    expect(svg).toContain('class="turtle-scale" transform="scale(1.1)"')
-    expect(delay).toBeGreaterThan(0)
-    expect(initialX).toBeGreaterThan(20)
-    expect(initialX).toBeLessThan(width - 20)
-  })
-
   it('synchronizes the winter turtle with ice contact, tracks and water feedback', () => {
     const turtleGrid = {
       ...grid,
@@ -119,7 +86,9 @@ describe('environment-aware original renderer', () => {
     expect(svg).toContain('class="turtle-impact"')
     expect(svg.match(/class="turtle-droplet"/g)).toHaveLength(4)
     const turtleDelay = svg.match(/\.turtle\{[^}]*animation-delay:-([\d.]+)s/)?.[1]
+    const approachY = svg.match(/@keyframes turtle\{0%\{[^}]+\}[\d.]+%\{transform:translate\([^,]+,([\d.]+)px\)/)?.[1]
     expect(Number(turtleDelay)).toBeGreaterThan(20)
+    expect(Number(approachY)).toBeLessThanOrEqual(154)
     expect(svg).toContain('@keyframes snow-track-7{')
   })
 
