@@ -16,6 +16,7 @@ describe('pond environment', () => {
     const south = deriveEnvironment(momentFromText('2026-07-15', '12:00', 600, -35))
     expect(north.season).toBe('summer')
     expect(south.season).toBe('winter')
+    expect(north.seasonWeights.summer).toBeGreaterThan(0.98)
     expect(Object.values(north.seasonWeights).reduce((sum, value) => sum + value, 0)).toBeCloseTo(1, 2)
   })
 
@@ -29,5 +30,17 @@ describe('pond environment', () => {
     const environment = deriveEnvironment(momentFromText('2026-08-16', '12:00'), 'winter')
     expect(environment.season).toBe('winter')
     expect(environment.seasonWeights.winter).toBe(1)
+  })
+
+  it('moves directional light across the pond during the day', () => {
+    const morning = deriveEnvironment(momentFromText('2026-08-16', '08:00'))
+    const noon = deriveEnvironment(momentFromText('2026-08-16', '12:00'))
+    const afternoon = deriveEnvironment(momentFromText('2026-08-16', '16:00'))
+    expect(morning.sunDirection).toBeLessThan(0)
+    expect(afternoon.sunDirection).toBeGreaterThan(0)
+    expect(morning.sunStrength).toBeGreaterThan(0)
+    expect(afternoon.sunStrength).toBeGreaterThan(0)
+    expect(morning.goldenLight).toBeGreaterThan(noon.goldenLight)
+    expect(afternoon.goldenLight).toBeGreaterThan(noon.goldenLight)
   })
 })

@@ -20,7 +20,7 @@ describe('environment palette', () => {
     const winter = themeForEnvironment(deriveEnvironment(moment, 'winter'))
     expect(spring.waterTop).not.toBe(autumn.waterTop)
     expect(autumn.lily).not.toBe(winter.lily)
-    expect(spring.koi).toHaveLength(winter.koi.length)
+    expect(spring.koi).toEqual(winter.koi)
     expect(spring.plankton).toHaveLength(winter.plankton.length)
   })
 
@@ -28,5 +28,9 @@ describe('environment palette', () => {
     const dawn = themeForEnvironment(deriveEnvironment(momentFromText('2026-08-16', '05:45')))
     const dusk = themeForEnvironment(deriveEnvironment(momentFromText('2026-08-16', '18:45')))
     expect(dawn.waterTop).not.toBe(dusk.waterTop)
+    const morning = themeForEnvironment(deriveEnvironment(momentFromText('2026-08-16', '08:00')))
+    const afternoon = themeForEnvironment(deriveEnvironment(momentFromText('2026-08-16', '16:00')))
+    expect(morning.waterTop).not.toBe(afternoon.waterTop)
+    expect(morning.fishFilter).not.toBe(afternoon.fishFilter)
   })
 })

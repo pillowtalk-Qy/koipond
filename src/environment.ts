@@ -21,6 +21,8 @@ export interface PondEnvironment {
   longitude: number
   dayOfYear: number
   solarAltitude: number
+  sunDirection: number
+  sunStrength: number
   daylight: number
   twilight: number
   goldenLight: number
@@ -30,7 +32,8 @@ export interface PondEnvironment {
   waterTemperature: number
   activityRate: number
   plantCoverage: number
-  autumnLeaves: number
+  bloom: number
+  surfaceActivity: number
   winterStillness: number
 }
 
@@ -113,7 +116,7 @@ function seasonWeights(yearProgress: number, latitude: number, override?: PondSe
   const progress = latitude < 0 ? (yearProgress + 0.5) % 1 : yearProgress
   const raw = Object.fromEntries(SEASONS.map(season => {
     const distance = circularDistance(progress, SEASON_CENTERS[season])
-    return [season, Math.exp(-0.5 * (distance / 0.12) ** 2)]
+    return [season, Math.exp(-0.5 * (distance / 0.075) ** 2)]
   })) as Record<PondSeason, number>
   const total = SEASONS.reduce((sum, season) => sum + raw[season], 0)
   return Object.fromEntries(SEASONS.map(season => [season, raw[season] / total])) as Record<PondSeason, number>
@@ -145,15 +148,19 @@ export function deriveEnvironment(moment: PondMoment, seasonOverride?: PondSeaso
   const solarAltitude = Math.asin(
     Math.sin(latitude) * Math.sin(declination) + Math.cos(latitude) * Math.cos(declination) * Math.cos(hourAngle),
   ) * 180 / Math.PI
+  const sunDirection = clamp(hourAngle / (Math.PI / 2), -1, 1)
+  const sunStrength = smoothstep(4, 66, solarAltitude)
   const daylight = smoothstep(-6, 8, solarAltitude)
   const twilight = smoothstep(-18, -4, solarAltitude) * (1 - smoothstep(-4, 8, solarAltitude))
-  const goldenLight = clamp(1 - Math.abs(solarAltitude - 5) / 13) * (0.35 + daylight * 0.65)
+  const goldenLight = smoothstep(-8, 5, solarAltitude) * (1 - smoothstep(12, 44, solarAltitude))
   const weights = seasonWeights(yearProgress, moment.latitude, seasonOverride)
   const season = SEASONS.reduce((best, candidate) => weights[candidate] > weights[best] ? candidate : best, 'spring')
   const waterTemperature = weights.spring * 17 + weights.summer * 27 + weights.autumn * 19 + weights.winter * 9
   const seasonalActivity = weights.spring * 1 + weights.summer * 1.08 + weights.autumn * 0.92 + weights.winter * 0.7
-  const activityRate = seasonalActivity * (0.9 + daylight * 0.1)
-  const plantCoverage = weights.spring * 0.86 + weights.summer + weights.autumn * 0.68 + weights.winter * 0.38
+  const activityRate = seasonalActivity * (0.82 + daylight * 0.18)
+  const plantCoverage = weights.spring * 0.62 + weights.summer + weights.autumn * 0.42 + weights.winter * 0.18
+  const bloom = weights.spring * 0.58 + weights.summer
+  const surfaceActivity = weights.spring * 0.82 + weights.summer + weights.autumn * 0.6 + weights.winter * 0.28
   const phase: DayPhase = solarAltitude >= 4
     ? 'day'
     : solarAltitude <= -12
@@ -168,6 +175,8 @@ export function deriveEnvironment(moment: PondMoment, seasonOverride?: PondSeaso
     longitude: f3(moment.longitude),
     dayOfYear: ordinal,
     solarAltitude: f3(solarAltitude),
+    sunDirection: f3(sunDirection),
+    sunStrength: f3(sunStrength),
     daylight: f3(daylight),
     twilight: f3(twilight),
     goldenLight: f3(goldenLight),
@@ -177,7 +186,8 @@ export function deriveEnvironment(moment: PondMoment, seasonOverride?: PondSeaso
     waterTemperature: f3(waterTemperature),
     activityRate: f3(activityRate),
     plantCoverage: f3(plantCoverage),
-    autumnLeaves: f3(weights.autumn),
+    bloom: f3(bloom),
+    surfaceActivity: f3(surfaceActivity),
     winterStillness: f3(weights.winter),
   }
 }

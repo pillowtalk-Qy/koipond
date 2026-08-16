@@ -116,7 +116,7 @@ interface Rgba {
   a: number
 }
 
-interface SeasonTint {
+interface SeasonalDayPalette {
   waterTop: string
   waterMid: string
   waterBottom: string
@@ -128,50 +128,50 @@ interface SeasonTint {
   accent: string
 }
 
-const SEASON_TINTS: Record<PondSeason, SeasonTint> = {
+const SEASONAL_DAY: Record<PondSeason, SeasonalDayPalette> = {
   spring: {
-    waterTop: '#a8e4ee',
-    waterMid: '#5fb6cb',
-    waterBottom: '#4193ab',
-    floorBlotch: '#287c94',
+    waterTop: THEMES.light.waterTop,
+    waterMid: THEMES.light.waterMid,
+    waterBottom: THEMES.light.waterBottom,
+    floorBlotch: THEMES.light.floorBlotch,
     plankton: ['#a9ecb6', '#4cd476', '#1fa34b', '#147639'],
-    lily: '#35855c',
-    lotusOuter: '#f299c0',
-    lotusInner: '#f8cddd',
-    accent: '#f5cf5f',
+    lily: THEMES.light.lily,
+    lotusOuter: THEMES.light.lotusOuter,
+    lotusInner: THEMES.light.lotusInner,
+    accent: THEMES.light.lotusHeart,
   },
   summer: {
-    waterTop: '#9fdfe7',
-    waterMid: '#55b2c2',
-    waterBottom: '#36899d',
-    floorBlotch: '#2f7f82',
-    plankton: ['#b3ef9b', '#61d663', '#2aa249', '#176f3d'],
-    lily: '#2f7d4f',
-    lotusOuter: '#ee8cad',
-    lotusInner: '#f5c6d3',
+    waterTop: '#8edbe6',
+    waterMid: '#43a8ba',
+    waterBottom: '#277691',
+    floorBlotch: '#236f83',
+    plankton: ['#c2f09e', '#69d65c', '#2b9f45', '#176c37'],
+    lily: '#28784a',
+    lotusOuter: '#ef8cab',
+    lotusInner: '#f6c4d2',
     accent: '#f0cb52',
   },
   autumn: {
-    waterTop: '#b0d6d2',
-    waterMid: '#719fa5',
-    waterBottom: '#527d89',
-    floorBlotch: '#697b67',
-    plankton: ['#c4dc8c', '#91bd58', '#678d42', '#47672f'],
-    lily: '#718052',
-    lotusOuter: '#d48468',
-    lotusInner: '#e7b28d',
-    accent: '#ddb25e',
+    waterTop: '#aed2ce',
+    waterMid: '#6d9ea5',
+    waterBottom: '#466f80',
+    floorBlotch: '#52736f',
+    plankton: ['#e0dc8d', '#b7bd58', '#7d8f3e', '#53652f'],
+    lily: '#78804b',
+    lotusOuter: '#cf826c',
+    lotusInner: '#e3ae91',
+    accent: '#d5aa55',
   },
   winter: {
-    waterTop: '#c4dde2',
-    waterMid: '#86aeb9',
-    waterBottom: '#587b8b',
-    floorBlotch: '#637c7d',
-    plankton: ['#c9e3d8', '#8fbfb3', '#5e958e', '#3d6d70'],
-    lily: '#657d72',
-    lotusOuter: '#c2d3d7',
-    lotusInner: '#e1ebed',
-    accent: '#b9d6de',
+    waterTop: '#bed3d8',
+    waterMid: '#789ba6',
+    waterBottom: '#496575',
+    floorBlotch: '#596e73',
+    plankton: ['#d2e2dc', '#9abcb4', '#668f8b', '#42686b'],
+    lily: '#61756f',
+    lotusOuter: '#bdcdd2',
+    lotusInner: '#dce6e8',
+    accent: '#aecbd3',
   },
 }
 
@@ -213,10 +213,10 @@ const mixColor = (from: string, to: string, amount: number) => {
 
 const mixNumber = (from: number, to: number, amount: number) => from + (to - from) * amount
 
-const weightedSeasonColor = (environment: PondEnvironment, pick: (tint: SeasonTint) => string) => {
+const weightedSeasonColor = (environment: PondEnvironment, pick: (palette: SeasonalDayPalette) => string) => {
   let value: Rgba = { r: 0, g: 0, b: 0, a: 0 }
-  for (const season of Object.keys(SEASON_TINTS) as PondSeason[]) {
-    const source = parseColor(pick(SEASON_TINTS[season]))
+  for (const season of Object.keys(SEASONAL_DAY) as PondSeason[]) {
+    const source = parseColor(pick(SEASONAL_DAY[season]))
     const weight = environment.seasonWeights[season]
     value = {
       r: value.r + source.r * weight,
@@ -226,6 +226,27 @@ const weightedSeasonColor = (environment: PondEnvironment, pick: (tint: SeasonTi
     }
   }
   return formatColor(value)
+}
+
+function seasonalDayTheme(environment: PondEnvironment): Theme {
+  const color = (pick: (palette: SeasonalDayPalette) => string) => weightedSeasonColor(environment, pick)
+  return {
+    ...THEMES.light,
+    waterTop: color(palette => palette.waterTop),
+    waterMid: color(palette => palette.waterMid),
+    waterBottom: color(palette => palette.waterBottom),
+    floorBlotch: color(palette => palette.floorBlotch),
+    plankton: [
+      color(palette => palette.plankton[0]),
+      color(palette => palette.plankton[1]),
+      color(palette => palette.plankton[2]),
+      color(palette => palette.plankton[3]),
+    ],
+    lily: color(palette => palette.lily),
+    lotusOuter: color(palette => palette.lotusOuter),
+    lotusInner: color(palette => palette.lotusInner),
+    lotusHeart: color(palette => palette.accent),
+  }
 }
 
 function blendTheme(from: Theme, to: Theme, amount: number): Theme {
@@ -273,46 +294,36 @@ function blendTheme(from: Theme, to: Theme, amount: number): Theme {
 }
 
 export function themeForEnvironment(environment: PondEnvironment): Theme {
-  const theme = blendTheme(THEMES.dark, THEMES.light, environment.daylight)
-  const seasonAmount = 0.08 + environment.daylight * 0.18
-  const seasonColor = (pick: (tint: SeasonTint) => string) => weightedSeasonColor(environment, pick)
-  theme.waterTop = mixColor(theme.waterTop, seasonColor(tint => tint.waterTop), seasonAmount)
-  theme.waterMid = mixColor(theme.waterMid, seasonColor(tint => tint.waterMid), seasonAmount)
-  theme.waterBottom = mixColor(theme.waterBottom, seasonColor(tint => tint.waterBottom), seasonAmount)
-  theme.floorBlotch = mixColor(theme.floorBlotch, seasonColor(tint => tint.floorBlotch), seasonAmount)
-  theme.lily = mixColor(theme.lily, seasonColor(tint => tint.lily), seasonAmount * 1.25)
-  theme.lotusOuter = mixColor(theme.lotusOuter, seasonColor(tint => tint.lotusOuter), seasonAmount * 1.2)
-  theme.lotusInner = mixColor(theme.lotusInner, seasonColor(tint => tint.lotusInner), seasonAmount)
-  theme.lotusHeart = mixColor(theme.lotusHeart, seasonColor(tint => tint.accent), seasonAmount)
-  theme.plankton = [
-    mixColor(theme.plankton[0], weightedSeasonColor(environment, tint => tint.plankton[0]), seasonAmount * 0.72),
-    mixColor(theme.plankton[1], weightedSeasonColor(environment, tint => tint.plankton[1]), seasonAmount * 0.72),
-    mixColor(theme.plankton[2], weightedSeasonColor(environment, tint => tint.plankton[2]), seasonAmount * 0.72),
-    mixColor(theme.plankton[3], weightedSeasonColor(environment, tint => tint.plankton[3]), seasonAmount * 0.72),
-  ]
+  const dayTheme = seasonalDayTheme(environment)
+  const theme = blendTheme(THEMES.dark, dayTheme, environment.daylight)
 
   const isMorning = environment.minuteOfDay < 720
   const twilightColor = isMorning ? '#e7a58f' : '#77618c'
-  const twilightAmount = environment.twilight * 0.28
+  const twilightAmount = environment.twilight * 0.22
   theme.waterTop = mixColor(theme.waterTop, twilightColor, twilightAmount)
-  theme.waterMid = mixColor(theme.waterMid, isMorning ? '#8e8290' : '#4f466f', twilightAmount * 0.7)
-  theme.sheen = mixColor(theme.sheen, isMorning ? '#ffd2ae' : '#b79bc9', environment.twilight * 0.34)
+  theme.waterMid = mixColor(theme.waterMid, isMorning ? '#8e8290' : '#4f466f', twilightAmount * 0.72)
+  theme.sheen = mixColor(theme.sheen, isMorning ? '#ffd2ae' : '#b79bc9', environment.twilight * 0.32)
 
-  const goldenAmount = environment.goldenLight * 0.14
-  theme.waterTop = mixColor(theme.waterTop, isMorning ? '#f5c6a5' : '#c59baa', goldenAmount)
-  theme.sheen = mixColor(theme.sheen, isMorning ? '#ffe1bd' : '#e6bfd2', goldenAmount * 1.35)
-  const highSun = Math.max(0, Math.min(1, (environment.solarAltitude - 12) / 55))
-  theme.waterTop = mixColor(theme.waterTop, '#c8f0f1', highSun * 0.08)
-  theme.waterMid = mixColor(theme.waterMid, '#74c6cd', highSun * 0.045)
+  const goldenAmount = environment.goldenLight * 0.18
+  theme.waterTop = mixColor(theme.waterTop, isMorning ? '#f3bf98' : '#c88ea4', goldenAmount)
+  theme.waterMid = mixColor(theme.waterMid, isMorning ? '#8aa6ad' : '#707b94', goldenAmount * 0.48)
+  theme.sheen = mixColor(theme.sheen, isMorning ? '#ffe0b9' : '#e7b7cd', goldenAmount * 2.2)
+  theme.waterTop = mixColor(theme.waterTop, '#d6f5f4', environment.sunStrength * environment.daylight * 0.1)
+  theme.waterMid = mixColor(theme.waterMid, '#82cad2', environment.sunStrength * environment.daylight * 0.035)
 
-  const fishSeasonAmount = environment.seasonWeights.winter * 0.16 + environment.seasonWeights.autumn * 0.08
-  theme.koi = theme.koi.map(variant => ({
-    ...variant,
-    base: mixColor(variant.base, environment.season === 'winter' ? '#e1edf0' : '#f4e5d0', fishSeasonAmount),
-    patch: mixColor(variant.patch, seasonColor(tint => tint.accent), fishSeasonAmount),
-  })) as Theme['koi']
-  theme.fishFilter = environment.daylight >= 0.46
-    ? `<filter id="fx" filterUnits="userSpaceOnUse" x="-70" y="-70" width="240%" height="240%"><feDropShadow dx="0.8" dy="2.8" stdDeviation="3.4" flood-color="#063340" flood-opacity="${(0.13 + environment.daylight * 0.05).toFixed(2)}"/></filter>`
-    : `<filter id="fx" filterUnits="userSpaceOnUse" x="-70" y="-70" width="240%" height="240%"><feDropShadow dx="0" dy="0" stdDeviation="5" flood-color="#22d3ee" flood-opacity="${(0.48 + (1 - environment.daylight) * 0.32).toFixed(2)}"/></filter>`
+  const daylightFish = environment.solarAltitude >= 2
+  theme.koi = daylightFish ? dayTheme.koi : THEMES.dark.koi
+  theme.minnow = daylightFish ? dayTheme.minnow : THEMES.dark.minnow
+  theme.halo = environment.solarAltitude < -4 ? THEMES.dark.halo : null
+  if (daylightFish) {
+    const shadowReach = 3.2 + environment.goldenLight * 2.8
+    const shadowX = 0.8 - environment.sunDirection * shadowReach
+    const shadowY = 2.8 + environment.goldenLight * 2.4
+    const shadowBlur = 3.1 + environment.goldenLight * 0.8
+    const shadowOpacity = 0.18 + environment.goldenLight * 0.1
+    theme.fishFilter = `<filter id="fx" filterUnits="userSpaceOnUse" x="-70" y="-70" width="240%" height="240%"><feDropShadow dx="${shadowX.toFixed(1)}" dy="${shadowY.toFixed(1)}" stdDeviation="${shadowBlur.toFixed(1)}" flood-color="#063340" flood-opacity="${shadowOpacity.toFixed(2)}"/></filter>`
+  } else {
+    theme.fishFilter = THEMES.dark.fishFilter
+  }
   return theme
 }

@@ -111,6 +111,9 @@ function renderAuto() {
   ).svg
   const clock = `${pad(Math.floor(environment.minuteOfDay / 60))}:${pad(environment.minuteOfDay % 60)}`
   momentLabel.textContent = `${environment.date} · ${clock} HKT · ${environment.season} · ${environment.phase}`
+  for (const button of document.querySelectorAll<HTMLButtonElement>('.season-jump')) {
+    button.classList.toggle('on', button.dataset.season === environment.season)
+  }
 }
 
 function show(mode: ViewMode) {
@@ -187,6 +190,16 @@ for (const control of [date, time]) {
     if (active === 'auto') show('auto')
   })
 }
+
+document.querySelectorAll<HTMLButtonElement>('.season-jump').forEach(button => {
+  button.addEventListener('click', () => {
+    const year = date.value.slice(0, 4) || String(momentAtTimezone(new Date()).year)
+    date.value = `${year}-${button.dataset.monthDay}`
+    time.value = '12:00'
+    live.checked = false
+    show('auto')
+  })
+})
 
 copy.addEventListener('click', () => {
   void navigator.clipboard.writeText(snippet.textContent ?? '').then(() => {

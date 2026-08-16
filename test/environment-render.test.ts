@@ -27,7 +27,9 @@ describe('environment-aware original renderer', () => {
     )
     expect(svg).toContain('id="koipond-environment"')
     expect(svg).toContain('"season":"winter"')
-    expect(svg).toContain('winter surface ice')
+    expect(svg.match(/data-pond-part="lily-pad"/g)).toHaveLength(1)
+    expect(svg).not.toContain('class="leaf"')
+    expect(svg).not.toContain('surface ice')
     expect(meta.duration).toBeGreaterThan(pondPlan.duration)
   })
 
@@ -37,6 +39,8 @@ describe('environment-aware original renderer', () => {
     const springSvg = renderSVG(grid, pondPlan, themeForEnvironment(spring), 'seasonal-render', { environment: spring }).svg
     const autumnSvg = renderSVG(grid, pondPlan, themeForEnvironment(autumn), 'seasonal-render', { environment: autumn }).svg
     expect(springSvg).not.toBe(autumnSvg)
+    expect(springSvg.match(/data-pond-part="lily-pad"/g)).toHaveLength(3)
+    expect(autumnSvg.match(/data-pond-part="lily-pad"/g)).toHaveLength(2)
     expect(pondPlan.fishes.every(fish => springSvg.includes(`@keyframes fp${fish.id}`))).toBe(true)
     expect(pondPlan.fishes.every(fish => autumnSvg.includes(`@keyframes fp${fish.id}`))).toBe(true)
   })

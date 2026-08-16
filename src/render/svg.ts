@@ -16,7 +16,6 @@ import {
   lotus,
   motes,
   pebbles,
-  seasonalDetails,
   surfaceSheen,
   turtle,
   waterCurrents,
@@ -227,6 +226,37 @@ export function renderSVG(
   const hasLotus = gap.len >= LOTUS_GAP
   const turtleY = LAYOUT.height - 26
   const lotusX = Math.min(Math.max(LAYOUT.padX + gap.centerWeek * LAYOUT.cell, 34), width - 34)
+  const environment = context.environment
+  const rayPeak = environment
+    ? environment.daylight * (0.08 + environment.goldenLight * 0.13 + environment.sunStrength * 0.07)
+    : 0.2
+  const rayFloor = rayPeak * 0.36
+  const causticOpacity = environment
+    ? environment.daylight *
+      (0.015 + environment.sunStrength * 0.105) *
+      (0.82 + environment.seasonWeights.summer * 0.18) *
+      (1 - environment.winterStillness * 0.32)
+    : 0.07
+  const floorPeak = environment ? 0.68 + environment.daylight * 0.25 + environment.sunStrength * 0.07 : 1
+  const floorFloor = floorPeak * 0.78
+  const shadowShift = environment
+    ? -environment.sunDirection * (12 + environment.goldenLight * 16)
+    : 0
+  const surfaceMotion = environment
+    ? environment.surfaceActivity * (0.45 + environment.daylight * 0.55)
+    : 1
+  const currentPeak = environment
+    ? (theme.key === 'light' ? 0.14 : 0.07) *
+      (0.42 + surfaceMotion * 0.58) *
+      (0.82 + environment.goldenLight * 0.18)
+    : theme.key === 'light' ? 0.14 : 0.07
+  const currentFloor = currentPeak * 0.5
+  const sheenIntensity = environment
+    ? Math.min(1, 0.58 + environment.daylight * 0.32 + environment.goldenLight * 0.1)
+    : 1
+  const moteCount = environment ? Math.round(3 + surfaceMotion * 5) : 8
+  const ambientRippleCount = environment ? Math.max(1, Math.round(1 + surfaceMotion * 3)) : 3
+  const swayAngle = environment ? 0.9 + surfaceMotion * 2 : 2.6
 
   const base = `
 .pk,.rp{transform-box:fill-box;transform-origin:center;animation-duration:${animationDuration}s;animation-timing-function:linear;animation-iteration-count:infinite}
@@ -237,32 +267,30 @@ export function renderSVG(
 @keyframes pec{0%,100%{transform:rotate(14deg)}50%{transform:rotate(-12deg)}}
 @keyframes tfk{0%,100%{transform:rotate(26deg)}50%{transform:rotate(-26deg)}}
 .tw{animation:tw 3.6s ease-in-out infinite alternate}
-.ray{opacity:0.12;animation:ray 9.5s ease-in-out infinite alternate}
+.ray{opacity:${rayFloor.toFixed(3)};animation:ray 9.5s ease-in-out infinite alternate}
 .sway{transform-box:fill-box;transform-origin:center;animation-name:sway;animation-timing-function:ease-in-out;animation-iteration-count:infinite;animation-direction:alternate}
 .bloom{transform-box:fill-box;transform-origin:center;animation:bloom 5.2s ease-in-out infinite alternate}
 .paddle{transform-box:fill-box;transform-origin:center;animation:paddle 1.4s ease-in-out infinite alternate}
-.ca{opacity:0.07;animation:ca 15s ease-in-out infinite alternate}
+.ca{opacity:${causticOpacity.toFixed(3)};animation:ca 15s ease-in-out infinite alternate}
 .floor{transform-box:fill-box;transform-origin:center;animation-name:floor;animation-timing-function:ease-in-out;animation-iteration-count:infinite;animation-direction:alternate}
-.current{opacity:${theme.key === 'light' ? 0.12 : 0.055};animation:current 19s ease-in-out infinite alternate}
+.current{opacity:${currentPeak.toFixed(3)};animation:current 19s ease-in-out infinite alternate}
 .mo{opacity:0;animation-name:mo;animation-timing-function:linear;animation-iteration-count:infinite}
 .ar{transform-box:fill-box;transform-origin:center;opacity:0;animation:ar 9s linear infinite}
-.leaf{transform-box:fill-box;transform-origin:center;animation-name:leaf;animation-timing-function:ease-in-out;animation-iteration-count:infinite;animation-direction:alternate}
 .turtle{transform:translate(${(width * 0.58).toFixed(1)}px,${turtleY}px);animation:turtle ${animationDuration}s linear infinite}
 .night{opacity:0;animation:night ${animationDuration}s linear infinite}
 @keyframes tw{from{opacity:0.06}to{opacity:0.26}}
-@keyframes ray{from{opacity:0.07}to{opacity:0.2}}
-@keyframes sway{from{transform:rotate(-2.4deg)}to{transform:rotate(2.6deg)}}
+@keyframes ray{from{opacity:${rayFloor.toFixed(3)}}to{opacity:${rayPeak.toFixed(3)}}}
+@keyframes sway{from{transform:rotate(-${swayAngle.toFixed(1)}deg)}to{transform:rotate(${swayAngle.toFixed(1)}deg)}}
 @keyframes bloom{from{transform:scale(1)}to{transform:scale(1.07)}}
 @keyframes paddle{from{transform:rotate(14deg)}to{transform:rotate(-14deg)}}
 @keyframes ca{from{transform:translate(-26px,0)}to{transform:translate(26px,9px)}}
-@keyframes floor{from{transform:translate(-9px,-2px) scale(0.98);opacity:0.78}to{transform:translate(11px,4px) scale(1.04);opacity:1}}
-@keyframes current{from{transform:translateX(-22px);opacity:${theme.key === 'light' ? 0.07 : 0.035}}to{transform:translateX(24px);opacity:${theme.key === 'light' ? 0.14 : 0.07}}}
+@keyframes floor{from{transform:translate(${(shadowShift - 9).toFixed(1)}px,-2px) scale(0.98);opacity:${floorFloor.toFixed(3)}}to{transform:translate(${(shadowShift + 11).toFixed(1)}px,4px) scale(1.04);opacity:${floorPeak.toFixed(3)}}}
+@keyframes current{from{transform:translateX(-22px);opacity:${currentFloor.toFixed(3)}}to{transform:translateX(24px);opacity:${currentPeak.toFixed(3)}}}
 @keyframes mo{0%{transform:translate(0,0);opacity:0}15%{opacity:0.55}85%{opacity:0.4}100%{transform:translate(14px,-26px);opacity:0}}
 @keyframes ar{0%{transform:scale(0.2);opacity:0}6%{opacity:0.22}26%,100%{transform:scale(3.6);opacity:0}}
-@keyframes leaf{from{transform:translate(-3px,-1px) rotate(-8deg)}to{transform:translate(4px,2px) rotate(11deg)}}
 @keyframes turtle{0%{transform:translate(-40px,${turtleY}px)}100%{transform:translate(${width + 40}px,${turtleY}px)}}
 @keyframes night{0%,91%{opacity:0}95%,97.5%{opacity:${theme.night}}100%{opacity:0}}
-@media (prefers-reduced-motion:reduce){*{animation:none!important}.rp,.tw,.mo,.ar,.night{opacity:0!important}.floor{opacity:0.9}.current{opacity:${theme.key === 'light' ? 0.1 : 0.05}}.ca{opacity:0.07}.ray{opacity:0.12}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}.rp,.tw,.mo,.ar,.night{opacity:0!important}.floor{opacity:${floorPeak.toFixed(3)}}.current{opacity:${currentPeak.toFixed(3)}}.ca{opacity:${causticOpacity.toFixed(3)}}.ray{opacity:${rayPeak.toFixed(3)}}}
 `
 
   const css = base + bucketCSS + fishKeyframes(plan, animationDuration, context.highlightedCells)
@@ -285,17 +313,8 @@ export function renderSVG(
   const environmentMeta = context.environment
     ? `<metadata id="koipond-environment">${escapeXML(JSON.stringify(context.environment))}</metadata>`
     : ''
-  const lotusPresence = context.environment
-    ? Math.min(
-        1,
-        context.environment.seasonWeights.spring * 0.8 +
-          context.environment.seasonWeights.summer +
-          context.environment.seasonWeights.autumn * 0.25 +
-          context.environment.seasonWeights.winter * 0.05,
-      )
-    : 1
-  const turtlePresence = context.environment ? 1 - context.environment.winterStillness * 0.55 : 1
-  const fishPresence = context.environment ? 1 - context.environment.winterStillness * 0.12 : 1
+  const lotusPresence = environment?.bloom ?? 1
+  const turtlePresence = environment ? 1 - environment.winterStillness * 0.18 : 1
   const environmentDescription = context.environment
     ? ` It is ${context.environment.phase} in ${context.environment.season}.`
     : ''
@@ -335,21 +354,20 @@ export function renderSVG(
     waterCurrents(width, theme, r) +
     deepShade(width, theme) +
     caustics(width, theme) +
-    godRays(width, theme, r) +
+    godRays(width, theme, r, environment?.sunDirection) +
     `<g>${planktonEls}</g>` +
     `<g>${rippleEls}</g>` +
     pebbles(theme, r) +
-    (context.environment ? seasonalDetails(width, theme, context.environment, seed, r) : '') +
     `<rect width="${width}" height="${LAYOUT.height}" rx="10" fill="url(#vig)"/>` +
-    surfaceSheen(width, theme) +
-    lilyPads(width, theme, seed, context.environment?.plantCoverage ?? 1) +
-    (hasLotus ? `<g opacity="${lotusPresence.toFixed(3)}">${lotus(lotusX, theme, r)}</g>` : '') +
+    surfaceSheen(width, theme, sheenIntensity) +
+    lilyPads(width, theme, seed, environment?.plantCoverage ?? 1) +
+    (hasLotus && lotusPresence >= 0.35
+      ? `<g opacity="${lotusPresence.toFixed(3)}">${lotus(lotusX, theme, r)}</g>`
+      : '') +
     (hasTurtle ? `<g opacity="${turtlePresence.toFixed(3)}">${turtle(theme)}</g>` : '') +
-    `<g opacity="${fishPresence.toFixed(3)}">` +
     plan.fishes.map(f => `<g>${fishSVG(f, theme, staticTime, timelineDuration)}</g>`).join('') +
-    `</g>` +
-    ambientRipples(width, theme, r) +
-    motes(width, theme, r) +
+    ambientRipples(width, theme, r, ambientRippleCount) +
+    motes(width, theme, r, moteCount) +
     `<rect class="night" width="${width}" height="${LAYOUT.height}" rx="10" fill="#000d14"/>` +
     `</svg>`
 

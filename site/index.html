@@ -208,6 +208,25 @@
   .live-toggle { color: var(--accent); cursor: pointer; }
   .live-toggle input { accent-color: var(--accent); }
   #moment-label { margin-left: auto; color: var(--muted); }
+  #season-jumps {
+    display: flex;
+    gap: 3px;
+    align-items: center;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 3px;
+  }
+  .season-jump {
+    background: transparent;
+    border: 0;
+    border-radius: 999px;
+    box-shadow: none;
+    color: var(--muted);
+    font: inherit;
+    padding: 4px 9px;
+  }
+  .season-jump:hover:not(:disabled) { transform: none; box-shadow: none; color: var(--ink); }
+  .season-jump.on { background: rgba(34, 211, 238, 0.14); color: var(--accent); }
   .fixed-environment #environment-controls { opacity: 0.42; pointer-events: none; }
 
   #pond {
@@ -335,6 +354,12 @@
       <label class="live-toggle"><input id="live" type="checkbox" checked> live</label>
       <label class="env-field">date <input id="date" type="date"></label>
       <label class="env-field">time <input id="time" type="time"></label>
+      <div id="season-jumps" aria-label="Season previews">
+        <button type="button" class="season-jump" data-season="spring" data-month-day="04-15">spring</button>
+        <button type="button" class="season-jump" data-season="summer" data-month-day="07-15">summer</button>
+        <button type="button" class="season-jump" data-season="autumn" data-month-day="10-15">autumn</button>
+        <button type="button" class="season-jump" data-season="winter" data-month-day="01-15">winter</button>
+      </div>
       <span id="moment-label" aria-live="polite"></span>
     </div>
     <div id="pond"></div>
