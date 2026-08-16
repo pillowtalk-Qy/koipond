@@ -13,7 +13,7 @@
 > [0xydev/koipond](https://github.com/0xydev/koipond). The original concept, visual language,
 > renderer and initial implementation were created by [@0xydev](https://github.com/0xydev).
 > Qy's `original-plus` edition preserves that foundation while adding persistent ecology,
-> replay-safe feeding, verifiable state provenance, and a solar-time and four-season environment
+> replay-safe feeding, verifiable state provenance, and a solar, lunar, current and four-season environment
 > layered onto the original pond rather than replacing its style or mechanics.
 > See [NOTICE.md](NOTICE.md) for the full attribution.
 
@@ -51,6 +51,12 @@ The graph does not just feed the fish, it shapes the ecosystem:
 - **The original light and dark ponds form one 24-hour cycle**: the sun's height and direction move
   the original rays, caustics, surface sheen and shadows through dawn, daylight, dusk and night.
   Each season keeps its own night ecology instead of collapsing into one shared dark palette.
+- **Night changes with the moon as well as the season**: a deterministic lunar cycle alters the
+  water color and leaves restrained, broken moonlight on the surface only while an illuminated moon
+  is above the pond. No weather or astronomy API is required.
+- **One current moves the whole surface**: its direction and strength change continuously, then
+  propagate through broad water bands, caustics, floor-shadow drift, motes, lily-pad sway and autumn
+  leaves instead of giving each layer an unrelated animation.
 - **The year moves continuously through four physical ecologies**: spring keeps the original pond,
   summer fills its lily pads with flowers that open after sunrise and close into buds at night,
   and individual maple leaves cross the autumn surface
@@ -83,7 +89,7 @@ Five minutes, four steps, no local setup:
    your username (for example `octocat/octocat`). Its README is what visitors see on your profile.
 2. In that repo, create the file `.github/workflows/koipond.yml` with the workflow below (GitHub
    web UI: Add file, Create new file, paste, commit).
-3. Go to the Actions tab, pick `koipond`, press `Run workflow` once. This generates the first SVGs
+3. Go to the Actions tab, pick `koipond`, press `Run workflow` once. This generates the first SVG
    on an `output` branch. After that it refreshes itself every hour.
 4. Paste the `<img>` snippet below into your README, replacing `<user>/<repo>`.
 
@@ -101,17 +107,16 @@ jobs:
   generate:
     runs-on: ubuntu-latest
     steps:
-      - uses: pillowtalk-Qy/koipond@6936d05189b8723aed115ee5fdfd7cdc94a0e07c
+      - uses: pillowtalk-Qy/koipond@011f1fc5e62b6966bf697e59f4af89e9ae5e9290
         with:
           github_user_name: ${{ github.repository_owner }}
           outputs: |
             dist/koipond.svg?environment=auto&timezone=480&latitude=22.3193&longitude=114.1694
-      - uses: crazy-max/ghaction-github-pages@df5cc2bfa78282ded844b354faee141f06b41865 # v4
+      - uses: peaceiris/actions-gh-pages@84c30a85c19949d7eee79c4ff27748b70285e453 # v4.1.0
         with:
-          target_branch: output
-          build_dir: dist
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: output
+          publish_dir: ./dist
 ```
 
 Then embed the generated pond in your README:
@@ -234,9 +239,11 @@ npm run verify:state -- pond-state.json previous-pond-state.json
    become stable ecosystem traits, and lily-pad and winter-ice geometry are shared by rendering
    and path planning.
 4. **Environment** (`src/environment.ts`): calculates solar altitude from date, local time,
-   latitude, longitude and the equation of time; drives directional rays, caustics, shadows and
-   surface activity while blending the original light/dark palettes; and derives narrow,
-   overlapping seasonal weights for blooms, maple drift, ice coverage and winter stillness.
+   latitude, longitude and the equation of time; approximates lunar illumination and its visible
+   passage without an external service; derives one continuous current vector; drives directional
+   rays, caustics, shadows and surface activity while blending the original light/dark palettes;
+   and derives narrow, overlapping seasonal weights for blooms, maple drift, ice coverage and
+   winter stillness.
 5. **Planner** (`src/planner.ts`): a seeded steering-physics simulation. Fish accelerate under a
    capped force toward their next plankton, change pace with satiety, separate, school, avoid pond
    obstacles and bounce softly off the walls. Deterministic, so the same grid + seed always bakes
@@ -255,6 +262,7 @@ npm run verify:state -- pond-state.json previous-pond-state.json
 - [x] GitHub Action packaging with persistent state and query-string options
 - [x] GIF and MP4 output (headless browser capture)
 - [x] Continuous 24-hour solar direction, light, dawn, dusk and night from the original two palettes
+- [x] Deterministic lunar illumination and a shared, continuously changing surface current
 - [x] Four-season ecology with summer blooms, autumn maple drift and interactive winter ice
 - [ ] More species, decor unlocked by achievements, GitLab support
 
