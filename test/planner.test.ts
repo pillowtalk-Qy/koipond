@@ -13,6 +13,7 @@ import {
 import { deriveEnvironment, momentFromText } from '../src/environment'
 import { svgWidth } from '../src/layout'
 import { ACTIVE_FRACTION, longestGap, longestStreak, plan } from '../src/planner'
+import { fishStaticTrail } from '../src/render/fish'
 import { THEMES } from '../src/render/palette'
 import { renderSVG } from '../src/render/svg'
 import { finalizePondState, highlightedCells, preparePondState, provenanceFor } from '../src/state'
@@ -76,6 +77,53 @@ describe('planner', () => {
       expect(last.y).toBeCloseTo(f.start.y, 5)
       expect(last.satiety).toBe(0)
       expect(f.waypoints.every(wp => wp.satiety >= 0 && wp.satiety <= 1)).toBe(true)
+    }
+  })
+
+  it('returns every fish within its swimming envelope and preserves body length across the loop seam', () => {
+    const environments = [
+      deriveEnvironment(momentFromText('2026-08-16', '12:00')),
+      deriveEnvironment(momentFromText('2026-08-16', '00:00')),
+      deriveEnvironment(momentFromText('2026-01-15', '00:00'), 'winter'),
+    ]
+
+    const scenarios = [
+      ...environments.map(environment => ({ environment, grid, seed: 'loop-seam' })),
+      {
+        environment: environments[2],
+        grid: {
+          ...grid,
+          cells: grid.cells.map(cell => ({ ...cell, count: Math.max(6, cell.count), level: 4 as const })),
+        },
+        seed: 'stress-2',
+      },
+    ]
+
+    for (const scenario of scenarios) {
+      const pond = plan(scenario.grid, scenario.seed, undefined, scenario.environment)
+      for (const fish of pond.fishes) {
+        const speedLimit = fish.species === 'koi' ? 60 : 82
+        for (let index = 1; index < fish.waypoints.length; index++) {
+          const previous = fish.waypoints[index - 1]
+          const waypoint = fish.waypoints[index]
+          const speed = Math.hypot(waypoint.x - previous.x, waypoint.y - previous.y) /
+            (waypoint.t - previous.t)
+          expect(speed).toBeLessThanOrEqual(speedLimit)
+        }
+
+        const seamTrails = [pond.duration - 0.02, 0.02].map(time => {
+          const trail = fishStaticTrail(fish, time, pond.duration)
+          for (let index = 1; index < trail.length; index++) {
+            expect(Math.hypot(trail[index].x - trail[index - 1].x, trail[index].y - trail[index - 1].y))
+              .toBeLessThan(5)
+          }
+          return trail
+        })
+        const bodyLength = (trail: ReturnType<typeof fishStaticTrail>) =>
+          Math.hypot(trail[0].x - trail.at(-1)!.x, trail[0].y - trail.at(-1)!.y)
+        expect(bodyLength(seamTrails[0])).toBeGreaterThan(15)
+        expect(Math.abs(bodyLength(seamTrails[0]) - bodyLength(seamTrails[1]))).toBeLessThan(1.5)
+      }
     }
   })
 

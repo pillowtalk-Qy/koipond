@@ -2,7 +2,7 @@ import { cellEnergy, desiredPopulation, ecosystemStats, pondObstacleLayout, type
 import type { PondEnvironment } from './environment'
 import { rng } from './prng'
 import { LAYOUT, cellCenter, svgWidth } from './layout'
-import type { EatEvent, FishIdentity, FishPlan, Grid, Plan } from './types'
+import type { EatEvent, FishIdentity, FishPlan, Grid, Plan, Point } from './types'
 
 export const ACTIVE_FRACTION = 0.92
 
@@ -21,6 +21,8 @@ interface Sim {
   f: FishPlan
   pos: { x: number; y: number }
   vel: { x: number; y: number }
+  loopVelocity: { x: number; y: number }
+  runwayStart: { x: number; y: number }
   target: Target | null
   targetAge: number
   wander: number
@@ -50,6 +52,233 @@ function resolveIceCollision(point: { x: number; y: number }, obstacles: PondObs
     if (!passMoved) break
   }
   return moved
+}
+
+function loopSetup(
+  idealStart: { x: number; y: number },
+  preferredAngle: number,
+  runwayLength: number,
+  fishSize: number,
+  width: number,
+  obstacles: PondObstacleSpec[],
+) {
+  let best = {
+    start: { ...idealStart },
+    direction: { x: Math.cos(preferredAngle), y: Math.sin(preferredAngle) },
+    score: -Infinity,
+  }
+  for (let ring = 0; ring <= 4; ring++) {
+    const radius = ring * 18
+    const positions = ring === 0 ? 1 : 16
+    for (let position = 0; position < positions; position++) {
+      const homeAngle = (position * Math.PI * 2) / positions
+      const start = {
+        x: idealStart.x + Math.cos(homeAngle) * radius,
+        y: idealStart.y + Math.sin(homeAngle) * radius,
+      }
+      for (let candidate = 0; candidate < 16; candidate++) {
+        const angle = preferredAngle + (candidate * Math.PI) / 8
+        const x = Math.cos(angle)
+        const y = Math.sin(angle)
+        let clearance = Infinity
+        for (let sample = -8; sample <= 8; sample++) {
+          const distance = runwayLength * (sample / 8)
+          const px = start.x + x * distance
+          const py = start.y + y * distance
+          clearance = Math.min(clearance, px - 22, width - 22 - px, py - 22, LAYOUT.height - 22 - py)
+          for (const obstacle of obstacles) {
+            clearance = Math.min(
+              clearance,
+              Math.hypot(px - obstacle.x, py - obstacle.y) - obstacle.radius - fishSize * 7 - 3,
+            )
+          }
+        }
+        const score = clearance - radius * 0.06
+        if (score > best.score) best = { start, direction: { x, y }, score }
+      }
+    }
+  }
+  return { start: best.start, direction: best.direction }
+}
+
+function returnPointOpen(
+  point: Point,
+  fishSize: number,
+  width: number,
+  obstacles: PondObstacleSpec[],
+): boolean {
+  if (point.x < 12 || point.x > width - 12 || point.y < 12 || point.y > LAYOUT.height - 12) return false
+  return obstacles.every(obstacle =>
+    Math.hypot(point.x - obstacle.x, point.y - obstacle.y) >= obstacle.radius + fishSize * 4 + 2,
+  )
+}
+
+function returnSegmentOpen(
+  start: Point,
+  end: Point,
+  fishSize: number,
+  width: number,
+  obstacles: PondObstacleSpec[],
+): boolean {
+  const length = Math.hypot(end.x - start.x, end.y - start.y)
+  const samples = Math.max(1, Math.ceil(length / 4))
+  for (let sample = 1; sample <= samples; sample++) {
+    const progress = sample / samples
+    if (!returnPointOpen(
+      {
+        x: start.x + (end.x - start.x) * progress,
+        y: start.y + (end.y - start.y) * progress,
+      },
+      fishSize,
+      width,
+      obstacles,
+    )) return false
+  }
+  return true
+}
+
+function returnRoute(
+  start: Point,
+  goal: Point,
+  fishSize: number,
+  width: number,
+  obstacles: PondObstacleSpec[],
+): Point[] {
+  if (returnSegmentOpen(start, goal, fishSize, width, obstacles)) return [{ ...start }, { ...goal }]
+
+  // A small deterministic A* grid keeps the closing path out of ice and plant geometry.
+  const spacing = 10
+  const inset = 12
+  const columns = Math.floor((width - inset * 2) / spacing) + 1
+  const rows = Math.floor((LAYOUT.height - inset * 2) / spacing) + 1
+  const points = Array.from({ length: columns * rows }, (_, index) => ({
+    x: inset + (index % columns) * spacing,
+    y: inset + Math.floor(index / columns) * spacing,
+  }))
+  const open = points.map(point => returnPointOpen(point, fishSize, width, obstacles))
+  const connector = (point: Point) => {
+    const candidates = points
+      .map((candidate, index) => ({ index, distance: Math.hypot(candidate.x - point.x, candidate.y - point.y) }))
+      .filter(candidate => open[candidate.index])
+      .sort((a, b) => a.distance - b.distance)
+    return candidates.find(candidate =>
+      returnSegmentOpen(point, points[candidate.index], fishSize, width, obstacles),
+    )?.index
+  }
+  const startIndex = connector(start)
+  const goalIndex = connector(goal)
+  if (startIndex === undefined || goalIndex === undefined) return [{ ...start }, { ...goal }]
+
+  const costs = new Array(points.length).fill(Infinity)
+  const estimates = new Array(points.length).fill(Infinity)
+  const previous = new Int32Array(points.length).fill(-1)
+  const closed = new Uint8Array(points.length)
+  const heap: Array<{ index: number; score: number }> = []
+  const push = (entry: { index: number; score: number }) => {
+    heap.push(entry)
+    let index = heap.length - 1
+    while (index > 0) {
+      const parent = Math.floor((index - 1) / 2)
+      if (heap[parent].score <= entry.score) break
+      heap[index] = heap[parent]
+      index = parent
+    }
+    heap[index] = entry
+  }
+  const pop = () => {
+    const first = heap[0]
+    const last = heap.pop()
+    if (heap.length > 0 && last) {
+      let index = 0
+      while (true) {
+        const left = index * 2 + 1
+        const right = left + 1
+        if (left >= heap.length) break
+        const child = right < heap.length && heap[right].score < heap[left].score ? right : left
+        if (heap[child].score >= last.score) break
+        heap[index] = heap[child]
+        index = child
+      }
+      heap[index] = last
+    }
+    return first
+  }
+
+  costs[startIndex] = 0
+  estimates[startIndex] = Math.hypot(points[startIndex].x - goal.x, points[startIndex].y - goal.y)
+  push({ index: startIndex, score: estimates[startIndex] })
+  const neighbors = [-1, 0, 1]
+  while (heap.length > 0) {
+    const current = pop()
+    if (!current || closed[current.index] || current.score > estimates[current.index] + 1e-9) continue
+    if (current.index === goalIndex) break
+    closed[current.index] = 1
+    const column = current.index % columns
+    const row = Math.floor(current.index / columns)
+    for (const rowOffset of neighbors) {
+      for (const columnOffset of neighbors) {
+        if (rowOffset === 0 && columnOffset === 0) continue
+        const nextColumn = column + columnOffset
+        const nextRow = row + rowOffset
+        if (nextColumn < 0 || nextColumn >= columns || nextRow < 0 || nextRow >= rows) continue
+        const next = nextRow * columns + nextColumn
+        if (!open[next] || closed[next]) continue
+        if (!returnSegmentOpen(points[current.index], points[next], fishSize, width, obstacles)) continue
+        const move = rowOffset !== 0 && columnOffset !== 0 ? Math.SQRT2 * spacing : spacing
+        const cost = costs[current.index] + move
+        if (cost >= costs[next]) continue
+        costs[next] = cost
+        previous[next] = current.index
+        estimates[next] = cost + Math.hypot(points[next].x - goal.x, points[next].y - goal.y)
+        push({ index: next, score: estimates[next] })
+      }
+    }
+  }
+
+  if (!Number.isFinite(costs[goalIndex])) return [{ ...start }, { ...goal }]
+  const gridRoute: Point[] = []
+  for (let index = goalIndex; index >= 0; index = previous[index]) {
+    gridRoute.push(points[index])
+    if (index === startIndex) break
+  }
+  gridRoute.reverse()
+  const route = [{ ...start }, ...gridRoute, { ...goal }]
+  const simplified = [route[0]]
+  let anchor = 0
+  while (anchor < route.length - 1) {
+    let next = route.length - 1
+    while (
+      next > anchor + 1 &&
+      !returnSegmentOpen(route[anchor], route[next], fishSize, width, obstacles)
+    ) next--
+    simplified.push(route[next])
+    anchor = next
+  }
+  return simplified
+}
+
+function routeLength(route: Point[]): number {
+  let length = 0
+  for (let index = 1; index < route.length; index++) {
+    length += Math.hypot(route[index].x - route[index - 1].x, route[index].y - route[index - 1].y)
+  }
+  return length
+}
+
+function routePointAt(route: Point[], progress: number): Point {
+  const total = routeLength(route)
+  let remaining = total * Math.max(0, Math.min(1, progress))
+  for (let index = 1; index < route.length; index++) {
+    const start = route[index - 1]
+    const end = route[index]
+    const length = Math.hypot(end.x - start.x, end.y - start.y)
+    if (remaining <= length || index === route.length - 1) {
+      const local = length <= 1e-9 ? 1 : Math.min(1, remaining / length)
+      return { x: start.x + (end.x - start.x) * local, y: start.y + (end.y - start.y) * local }
+    }
+    remaining -= length
+  }
+  return { ...route.at(-1)! }
 }
 
 export function plan(grid: Grid, seed: string, identities?: FishIdentity[], environment?: PondEnvironment): Plan {
@@ -100,13 +329,32 @@ export function plan(grid: Grid, seed: string, identities?: FishIdentity[], envi
   }
 
   const sims: Sim[] = fishes.map(f => {
-    const a = r() * Math.PI * 2
+    const preferredAngle = r() * Math.PI * 2
     const maxSpeed =
       f.species === 'koi' ? 58 - 9 * f.size + stats.recentEnergy * 3 : 68 + stats.burstiness * 10
+    const initialSpeed = maxSpeed * 0.7
+    const runwayDuration = 1.4
+    const setup = loopSetup(
+      f.start,
+      preferredAngle,
+      initialSpeed * (runwayDuration + 0.55),
+      f.size,
+      width,
+      obstacles,
+    )
+    f.start.x = setup.start.x
+    f.start.y = setup.start.y
+    const direction = setup.direction
+    const loopVelocity = { x: direction.x * initialSpeed, y: direction.y * initialSpeed }
     return {
       f,
       pos: { ...f.start },
-      vel: { x: Math.cos(a) * maxSpeed * 0.7, y: Math.sin(a) * maxSpeed * 0.7 },
+      vel: { ...loopVelocity },
+      loopVelocity,
+      runwayStart: {
+        x: f.start.x - loopVelocity.x * runwayDuration,
+        y: f.start.y - loopVelocity.y * runwayDuration,
+      },
       target: null,
       targetAge: 0,
       wander: r() * Math.PI * 2,
@@ -291,35 +539,56 @@ export function plan(grid: Grid, seed: string, identities?: FishIdentity[], envi
   }
 
   const feedEnd = t
-  const duration = Math.max(24, (feedEnd + 1.5) / ACTIVE_FRACTION)
-
-  const orbits = sims.map(s => ({
-    R: 20 + 7 * s.f.size,
-    ang: r() * Math.PI * 2,
-    dir: r() < 0.5 ? 1 : -1,
-  }))
-  while (t < duration - 1e-9) {
-    sample()
-    sims.forEach((s, i) => {
-      const o = orbits[i]
-      o.ang += ((o.dir * (s.maxSpeed * 0.55)) / o.R) * SIM_DT
-      step(s, s.f.start.x + Math.cos(o.ang) * o.R, s.f.start.y + Math.sin(o.ang) * o.R, false)
+  const minimumDuration = Math.max(24, (feedEnd + 1.5) / ACTIVE_FRACTION)
+  const runwayDuration = 1.4
+  const returnRoutes = sims.map(s => {
+    const entry = {
+      x: s.runwayStart.x - s.loopVelocity.x * 0.55,
+      y: s.runwayStart.y - s.loopVelocity.y * 0.55,
+    }
+    return [...returnRoute(s.pos, entry, s.f.size, width, obstacles), { ...s.runwayStart }]
+  })
+  const returnDuration = Math.max(
+    2.4,
+    minimumDuration - feedEnd,
+    ...returnRoutes.map((route, index) => routeLength(route) / (sims[index].maxSpeed * 0.7)),
+  )
+  const returnStartTime = t
+  const returnEndTime = returnStartTime + returnDuration
+  while (t < returnEndTime - 1e-9) {
+    const progress = (t - returnStartTime) / returnDuration
+    sims.forEach((s, index) => {
+      const point = routePointAt(returnRoutes[index], progress)
+      s.pos.x = point.x
+      s.pos.y = point.y
+      s.satiety = Math.max(0, s.satiety - SIM_DT * 0.62)
     })
+    sample()
+    t += SIM_DT
+  }
+  t = returnEndTime
+  sims.forEach(s => {
+    s.pos.x = s.runwayStart.x
+    s.pos.y = s.runwayStart.y
+    s.satiety = 0
+  })
+
+  const runwayStartTime = t
+  const duration = runwayStartTime + runwayDuration
+  while (t < duration - 1e-9) {
+    const progress = Math.min(1, (t - runwayStartTime) / runwayDuration)
+    sims.forEach(s => {
+      s.pos.x = s.runwayStart.x + (s.f.start.x - s.runwayStart.x) * progress
+      s.pos.y = s.runwayStart.y + (s.f.start.y - s.runwayStart.y) * progress
+      s.vel.x = s.loopVelocity.x
+      s.vel.y = s.loopVelocity.y
+      s.satiety = 0
+    })
+    sample()
     t += SIM_DT
   }
 
-  const BLEND = 2.6
   for (const f of fishes) {
-    for (const wp of f.waypoints) {
-      if (wp.t > duration - BLEND) {
-        const w = (wp.t - (duration - BLEND)) / BLEND
-        const e = w * w * (3 - 2 * w)
-        wp.x = wp.x * (1 - e) + f.start.x * e
-        wp.y = wp.y * (1 - e) + f.start.y * e
-        wp.satiety *= 1 - e
-        resolveIceCollision(wp, obstacles)
-      }
-    }
     const last = f.waypoints[f.waypoints.length - 1]
     if (!last || last.t < duration - 1e-6) {
       f.waypoints.push({ t: duration, x: f.start.x, y: f.start.y, satiety: 0 })

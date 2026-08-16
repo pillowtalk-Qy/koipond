@@ -30,10 +30,16 @@ export function fishStaticTrail(f: FishPlan, staticTime: number, duration: numbe
   return Array.from({ length: count }, (_, index) => fishPointAt(f, staticTime - index * lag, duration))
 }
 
-const positionStyle = (point: Point, delay = 0) =>
-  ` style="transform:translate(${f2(point.x)}px,${f2(point.y)}px)${delay > 0 ? `;animation-delay:${f2(delay)}s` : ''}"`
+const positionStyle = (point: Point, delay?: number) =>
+  ` style="transform:translate(${f2(point.x)}px,${f2(point.y)}px)${delay === undefined ? '' : `;animation-delay:${f2(delay)}s`}"`
 
-export function fishSVG(f: FishPlan, theme: Theme, staticTime: number, duration: number): string {
+export function fishSVG(
+  f: FishPlan,
+  theme: Theme,
+  staticTime: number,
+  duration: number,
+  animationDuration = duration,
+): string {
   const rf = rng(`fish:${f.key}`)
   const isKoi = f.species === 'koi'
   const cls = `f${f.id}`
@@ -43,6 +49,8 @@ export function fishSVG(f: FishPlan, theme: Theme, staticTime: number, duration:
   const radii = isKoi ? radiusProfile(N, 4, 4.2, 6.5, 1.5) : radiusProfile(N, 3, 2.2, 3.2, 0.9)
   const staticTrail = fishStaticTrail(f, staticTime, duration)
   const head = staticTrail[0]
+  const delayForLag = (trailLag: number) =>
+    trailLag <= 0 ? undefined : -(animationDuration - trailLag * (animationDuration / duration))
 
   let base: string
   let band: string
@@ -80,7 +88,7 @@ export function fishSVG(f: FishPlan, theme: Theme, staticTime: number, duration:
   const ridgeOp = (theme.key === 'dark' ? 0.17 : 0.13) + memoryMarks * 0.018
   let trail = ''
   for (let i = N - 1; i >= 0; i--) {
-    const d = positionStyle(staticTrail[i], i * lag)
+    const d = positionStyle(staticTrail[i], delayForLag(i * lag))
     trail += `<circle class="${cls}"${d} r="${f2(radii[i] * f.size)}" fill="${segFill(i)}" fill-opacity="${f2(segOpacity(i))}"/>`
     if (isKoi && i >= 2 && i <= 13) {
       trail += `<circle class="${cls}"${d} r="${f2(radii[i] * f.size * 0.42)}" fill="${ridge}" fill-opacity="${f2(ridgeOp)}"/>`
@@ -92,14 +100,17 @@ export function fishSVG(f: FishPlan, theme: Theme, staticTime: number, duration:
 
   const shoulder = f2(radii[4] * f.size + 1.6)
   const pecs = isKoi
-    ? `<g class="${cls}"${positionStyle(fishPointAt(f, staticTime - 3 * lag, duration), 3 * lag)}>` +
+    ? `<g class="${cls}"${positionStyle(fishPointAt(f, staticTime - 3 * lag, duration), delayForLag(3 * lag))}>` +
       `<ellipse class="pt" cx="0" cy="-${shoulder}" rx="${f2(3.1 * f.size)}" ry="${f2(1.4 * f.size)}" fill="${fin}"/>` +
       `<ellipse class="pb" cx="0" cy="${shoulder}" rx="${f2(3.1 * f.size)}" ry="${f2(1.4 * f.size)}" fill="${fin}"/>` +
       `</g>`
     : ''
 
   const tailFin =
-    `<g class="${cls}"${positionStyle(fishPointAt(f, staticTime - (N - 0.3) * lag, duration), (N - 0.3) * lag)}>` +
+    `<g class="${cls}"${positionStyle(
+      fishPointAt(f, staticTime - (N - 0.3) * lag, duration),
+      delayForLag((N - 0.3) * lag),
+    )}>` +
     `<ellipse class="tf" rx="${f2((isKoi ? 3.8 : 2) * f.size)}" ry="${f2((isKoi ? 1.5 : 0.9) * f.size)}" fill="${fin}" fill-opacity="0.8"/>` +
     `</g>`
 

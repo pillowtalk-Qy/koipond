@@ -657,7 +657,7 @@ ${turtleScene.css}
     (hasLotus && lotusPresence >= 0.35
       ? `<g opacity="${lotusPresence.toFixed(3)}">${lotus(lotusX, theme, r, environment?.lotusOpenness ?? 1)}</g>`
       : '') +
-    plan.fishes.map(f => `<g>${fishSVG(f, theme, staticTime, timelineDuration)}</g>`).join('') +
+    plan.fishes.map(f => `<g>${fishSVG(f, theme, staticTime, timelineDuration, animationDuration)}</g>`).join('') +
     autumnMapleLeaves(
       width,
       theme,

@@ -170,4 +170,25 @@ describe('environment-aware original renderer', () => {
     expect(variable(firstLeaf(eastSvg), 'mx0')).toBeLessThan(variable(firstLeaf(eastSvg), 'mx3'))
     expect(variable(firstLeaf(westSvg), 'mx0')).toBeGreaterThan(variable(firstLeaf(westSvg), 'mx3'))
   })
+
+  it('starts complete fish bodies and keeps the loop seam closed by day and night', () => {
+    const environments = [
+      deriveEnvironment(momentFromText('2026-08-16', '12:00'), 'summer'),
+      deriveEnvironment(momentFromText('2026-08-16', '00:00'), 'summer'),
+    ]
+
+    for (const environment of environments) {
+      const svg = renderSVG(grid, pondPlan, themeForEnvironment(environment), 'seasonal-render', { environment }).svg
+      const bodyDelays = [...svg.matchAll(/class="f\d+" style="[^"]*animation-delay:([\d.-]+)s/g)]
+        .map(match => Number(match[1]))
+      expect(bodyDelays.length).toBeGreaterThan(20)
+      expect(bodyDelays.every(delay => delay < 0)).toBe(true)
+
+      for (const fish of pondPlan.fishes) {
+        const start = `translate(${fish.start.x.toFixed(1)}px,${fish.start.y.toFixed(1)}px)`
+        expect(svg).toContain(`@keyframes fp${fish.id}{0.00%{transform:${start}`)
+        expect(svg).toContain(`100%{transform:${start};opacity:0.92}`)
+      }
+    }
+  })
 })
