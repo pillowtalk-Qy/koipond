@@ -33,6 +33,7 @@ export interface Theme {
   mote: string
   caustics: boolean
   night: number
+  nightTint: string
   turtleShell: string
   turtleSkin: string
   turtleRing: string
@@ -69,6 +70,7 @@ export const THEMES: Record<'light' | 'dark', Theme> = {
     mote: '#ffffff',
     caustics: true,
     night: 0.4,
+    nightTint: '#000d14',
     turtleShell: '#549647',
     turtleSkin: '#86bb71',
     turtleRing: 'rgba(20,60,30,0.38)',
@@ -103,6 +105,7 @@ export const THEMES: Record<'light' | 'dark', Theme> = {
     mote: '#7dd3fc',
     caustics: false,
     night: 0.24,
+    nightTint: '#000d14',
     turtleShell: '#176853',
     turtleSkin: '#238a72',
     turtleRing: 'rgba(127,243,255,0.3)',
@@ -126,6 +129,13 @@ interface SeasonalDayPalette {
   lotusOuter: string
   lotusInner: string
   accent: string
+}
+
+interface SeasonalNightPalette extends SeasonalDayPalette {
+  sheen: string
+  ripple: string
+  mote: string
+  nightTint: string
 }
 
 const SEASONAL_DAY: Record<PondSeason, SeasonalDayPalette> = {
@@ -175,6 +185,69 @@ const SEASONAL_DAY: Record<PondSeason, SeasonalDayPalette> = {
   },
 }
 
+const SEASONAL_NIGHT: Record<PondSeason, SeasonalNightPalette> = {
+  spring: {
+    waterTop: '#12384a',
+    waterMid: '#082337',
+    waterBottom: '#020c15',
+    floorBlotch: '#123748',
+    plankton: ['#285f68', '#1d8b85', '#24bfa0', '#8ce6c8'],
+    lily: '#175d50',
+    lotusOuter: '#9acfd5',
+    lotusInner: '#c7e7e8',
+    accent: '#8ee6d2',
+    sheen: '#91d4d8',
+    ripple: '#4ad8dd',
+    mote: '#9de6df',
+    nightTint: '#06131a',
+  },
+  summer: {
+    waterTop: '#123a46',
+    waterMid: '#082631',
+    waterBottom: '#020d13',
+    floorBlotch: '#143b42',
+    plankton: ['#466d5a', '#2b9580', '#48c59a', '#c8df91'],
+    lily: '#175e46',
+    lotusOuter: '#d68da8',
+    lotusInner: '#ecc4d2',
+    accent: '#d9c66a',
+    sheen: '#91d7c9',
+    ripple: '#4bd9d0',
+    mote: '#d9e6a8',
+    nightTint: '#071316',
+  },
+  autumn: {
+    waterTop: '#1a3444',
+    waterMid: '#0c2230',
+    waterBottom: '#050c12',
+    floorBlotch: '#24363b',
+    plankton: ['#62684c', '#82804c', '#a99a55', '#d4b76d'],
+    lily: '#485646',
+    lotusOuter: '#aa7467',
+    lotusInner: '#cf9b7e',
+    accent: '#d1aa66',
+    sheen: '#b6a98a',
+    ripple: '#81b6bd',
+    mote: '#d4b76d',
+    nightTint: '#0b1116',
+  },
+  winter: {
+    waterTop: '#173445',
+    waterMid: '#0a2232',
+    waterBottom: '#020b12',
+    floorBlotch: '#203943',
+    plankton: ['#41636d', '#5d8994', '#83b7c0', '#c8edf3'],
+    lily: '#435c5f',
+    lotusOuter: '#9fbac2',
+    lotusInner: '#d2e5e9',
+    accent: '#a7c8d4',
+    sheen: '#b9dce5',
+    ripple: '#8edff0',
+    mote: '#c8edf3',
+    nightTint: '#07131c',
+  },
+}
+
 const parseColor = (value: string): Rgba => {
   if (value.startsWith('#')) {
     const hex = value.slice(1)
@@ -213,10 +286,14 @@ const mixColor = (from: string, to: string, amount: number) => {
 
 const mixNumber = (from: number, to: number, amount: number) => from + (to - from) * amount
 
-const weightedSeasonColor = (environment: PondEnvironment, pick: (palette: SeasonalDayPalette) => string) => {
+const weightedSeasonColor = <Palette extends SeasonalDayPalette>(
+  environment: PondEnvironment,
+  palettes: Record<PondSeason, Palette>,
+  pick: (palette: Palette) => string,
+) => {
   let value: Rgba = { r: 0, g: 0, b: 0, a: 0 }
-  for (const season of Object.keys(SEASONAL_DAY) as PondSeason[]) {
-    const source = parseColor(pick(SEASONAL_DAY[season]))
+  for (const season of Object.keys(palettes) as PondSeason[]) {
+    const source = parseColor(pick(palettes[season]))
     const weight = environment.seasonWeights[season]
     value = {
       r: value.r + source.r * weight,
@@ -229,7 +306,8 @@ const weightedSeasonColor = (environment: PondEnvironment, pick: (palette: Seaso
 }
 
 function seasonalDayTheme(environment: PondEnvironment): Theme {
-  const color = (pick: (palette: SeasonalDayPalette) => string) => weightedSeasonColor(environment, pick)
+  const color = (pick: (palette: SeasonalDayPalette) => string) =>
+    weightedSeasonColor(environment, SEASONAL_DAY, pick)
   return {
     ...THEMES.light,
     waterTop: color(palette => palette.waterTop),
@@ -246,6 +324,33 @@ function seasonalDayTheme(environment: PondEnvironment): Theme {
     lotusOuter: color(palette => palette.lotusOuter),
     lotusInner: color(palette => palette.lotusInner),
     lotusHeart: color(palette => palette.accent),
+  }
+}
+
+function seasonalNightTheme(environment: PondEnvironment): Theme {
+  const color = (pick: (palette: SeasonalNightPalette) => string) =>
+    weightedSeasonColor(environment, SEASONAL_NIGHT, pick)
+  return {
+    ...THEMES.dark,
+    waterTop: color(palette => palette.waterTop),
+    waterMid: color(palette => palette.waterMid),
+    waterBottom: color(palette => palette.waterBottom),
+    floorBlotch: color(palette => palette.floorBlotch),
+    plankton: [
+      color(palette => palette.plankton[0]),
+      color(palette => palette.plankton[1]),
+      color(palette => palette.plankton[2]),
+      color(palette => palette.plankton[3]),
+    ],
+    lily: color(palette => palette.lily),
+    lotusOuter: color(palette => palette.lotusOuter),
+    lotusInner: color(palette => palette.lotusInner),
+    lotusHeart: color(palette => palette.accent),
+    sheen: color(palette => palette.sheen),
+    ripple: color(palette => palette.ripple),
+    mote: color(palette => palette.mote),
+    nightTint: color(palette => palette.nightTint),
+    night: 0.19 + environment.nightDepth * 0.07,
   }
 }
 
@@ -287,6 +392,7 @@ function blendTheme(from: Theme, to: Theme, amount: number): Theme {
     mote: mixColor(from.mote, to.mote, amount),
     caustics: amount > 0.24,
     night: mixNumber(from.night, to.night, amount),
+    nightTint: mixColor(from.nightTint, to.nightTint, amount),
     turtleShell: mixColor(from.turtleShell, to.turtleShell, amount),
     turtleSkin: mixColor(from.turtleSkin, to.turtleSkin, amount),
     turtleRing: mixColor(from.turtleRing, to.turtleRing, amount),
@@ -295,19 +401,20 @@ function blendTheme(from: Theme, to: Theme, amount: number): Theme {
 
 export function themeForEnvironment(environment: PondEnvironment): Theme {
   const dayTheme = seasonalDayTheme(environment)
-  const theme = blendTheme(THEMES.dark, dayTheme, environment.daylight)
+  const nightTheme = seasonalNightTheme(environment)
+  const theme = blendTheme(nightTheme, dayTheme, environment.daylight)
 
   const isMorning = environment.minuteOfDay < 720
   const twilightColor = isMorning ? '#e7a58f' : '#77618c'
-  const twilightAmount = environment.twilight * 0.22
+  const twilightAmount = environment.twilight * 0.36
   theme.waterTop = mixColor(theme.waterTop, twilightColor, twilightAmount)
   theme.waterMid = mixColor(theme.waterMid, isMorning ? '#8e8290' : '#4f466f', twilightAmount * 0.72)
-  theme.sheen = mixColor(theme.sheen, isMorning ? '#ffd2ae' : '#b79bc9', environment.twilight * 0.32)
+  theme.sheen = mixColor(theme.sheen, isMorning ? '#ffd2ae' : '#d5a6bd', environment.twilight * 0.52)
 
-  const goldenAmount = environment.goldenLight * 0.18
+  const goldenAmount = environment.goldenLight * 0.26
   theme.waterTop = mixColor(theme.waterTop, isMorning ? '#f3bf98' : '#c88ea4', goldenAmount)
   theme.waterMid = mixColor(theme.waterMid, isMorning ? '#8aa6ad' : '#707b94', goldenAmount * 0.48)
-  theme.sheen = mixColor(theme.sheen, isMorning ? '#ffe0b9' : '#e7b7cd', goldenAmount * 2.2)
+  theme.sheen = mixColor(theme.sheen, isMorning ? '#ffe0b9' : '#f0b9cc', Math.min(1, goldenAmount * 2.5))
   theme.waterTop = mixColor(theme.waterTop, '#d6f5f4', environment.sunStrength * environment.daylight * 0.1)
   theme.waterMid = mixColor(theme.waterMid, '#82cad2', environment.sunStrength * environment.daylight * 0.035)
 

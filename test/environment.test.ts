@@ -9,6 +9,9 @@ describe('pond environment', () => {
     expect(noon.daylight).toBe(1)
     expect(midnight.phase).toBe('night')
     expect(midnight.daylight).toBe(0)
+    expect(midnight.nightDepth).toBeGreaterThan(0.95)
+    expect(midnight.lotusOpenness).toBeLessThan(0.2)
+    expect(noon.lotusOpenness).toBeGreaterThan(0.95)
   })
 
   it('blends seasons continuously and reverses them by hemisphere', () => {

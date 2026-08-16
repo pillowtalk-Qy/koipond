@@ -45,6 +45,8 @@ describe('environment-aware original renderer', () => {
     expect(springSvg.match(/data-pond-part="lily-pad"/g)).toHaveLength(4)
     expect(springSvg).not.toContain('data-seasonal-part=')
     expect(summerSvg).toContain('data-seasonal-part="summer-bloom"')
+    expect(summerSvg).toContain('data-lotus-state="open"')
+    expect(summerSvg.match(/data-lotus-openness=/g)?.length).toBeGreaterThanOrEqual(3)
     expect(autumnSvg).toContain('data-seasonal-part="autumn-maple"')
     expect(autumnSvg).toContain('class="maple-wake"')
     expect(autumnSvg).toContain('class="maple-body"')
@@ -84,6 +86,8 @@ describe('environment-aware original renderer', () => {
     expect(svg).toContain('@keyframes turtle-rear-paddle{')
     expect(svg).toMatch(/translateY\(-6px\) rotate\(-?\d+(?:\.\d+)?deg\)/)
     expect(svg).toContain('@keyframes turtle-splash-out{')
+    expect(svg).toContain('scale(1.08,0.86)')
+    expect(svg).toContain('rotate(-16deg)')
     expect(svg).toContain('class="turtle-impact"')
     expect(svg.match(/class="turtle-droplet"/g)).toHaveLength(4)
     const turtleAnimation = svg.match(/animation:turtle ([\d.]+)s linear infinite;animation-delay:-([\d.]+)s/)
@@ -108,5 +112,32 @@ describe('environment-aware original renderer', () => {
 
     expect(floorRule(morningSvg)).not.toBe(floorRule(noonSvg))
     expect(floorFilter(morningSvg)).not.toBe(floorFilter(noonSvg))
+  })
+
+  it('preserves seasonal identity at night and closes summer lotus flowers', () => {
+    const moment = momentFromText('2026-08-16', '00:00')
+    const renders = (['spring', 'summer', 'autumn', 'winter'] as const).map(season => {
+      const environment = deriveEnvironment(moment, season)
+      return renderSVG(grid, pondPlan, themeForEnvironment(environment), 'seasonal-render', { environment }).svg
+    })
+
+    expect(new Set(renders).size).toBe(4)
+    expect(renders[0]).not.toContain('data-seasonal-part=')
+    expect(renders[1]).toContain('data-seasonal-part="summer-bloom"')
+    expect(renders[1]).toContain('data-lotus-state="sleeping"')
+    expect(renders[2]).toContain('data-seasonal-part="autumn-maple"')
+    expect(renders[3]).toContain('data-seasonal-part="winter-ice"')
+  })
+
+  it('moves a restrained water-light path with the solar direction', () => {
+    const morning = deriveEnvironment(momentFromText('2026-08-16', '06:15'), 'summer')
+    const evening = deriveEnvironment(momentFromText('2026-08-16', '18:15'), 'summer')
+    const morningSvg = renderSVG(grid, pondPlan, themeForEnvironment(morning), 'seasonal-render', { environment: morning }).svg
+    const eveningSvg = renderSVG(grid, pondPlan, themeForEnvironment(evening), 'seasonal-render', { environment: evening }).svg
+    const light = (svg: string) => svg.match(/<g data-pond-part="directional-light"[^>]*>.*?<\/g>/)?.[0]
+
+    expect(light(morningSvg)).toBeTruthy()
+    expect(light(eveningSvg)).toBeTruthy()
+    expect(light(morningSvg)).not.toBe(light(eveningSvg))
   })
 })

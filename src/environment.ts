@@ -26,6 +26,7 @@ export interface PondEnvironment {
   daylight: number
   twilight: number
   goldenLight: number
+  nightDepth: number
   phase: DayPhase
   season: PondSeason
   seasonWeights: Record<PondSeason, number>
@@ -34,6 +35,7 @@ export interface PondEnvironment {
   plantCoverage: number
   bloom: number
   summerBloom: number
+  lotusOpenness: number
   mapleDrift: number
   iceCoverage: number
   surfaceActivity: number
@@ -156,6 +158,8 @@ export function deriveEnvironment(moment: PondMoment, seasonOverride?: PondSeaso
   const daylight = smoothstep(-6, 8, solarAltitude)
   const twilight = smoothstep(-18, -4, solarAltitude) * (1 - smoothstep(-4, 8, solarAltitude))
   const goldenLight = smoothstep(-8, 5, solarAltitude) * (1 - smoothstep(12, 44, solarAltitude))
+  const nightDepth = 1 - smoothstep(-24, -8, solarAltitude)
+  const lotusOpenness = 0.12 + smoothstep(-3, 20, solarAltitude) * 0.88
   const weights = seasonWeights(yearProgress, moment.latitude, seasonOverride)
   const season = SEASONS.reduce((best, candidate) => weights[candidate] > weights[best] ? candidate : best, 'spring')
   const waterTemperature = weights.spring * 17 + weights.summer * 27 + weights.autumn * 19 + weights.winter * 9
@@ -183,6 +187,7 @@ export function deriveEnvironment(moment: PondMoment, seasonOverride?: PondSeaso
     daylight: f3(daylight),
     twilight: f3(twilight),
     goldenLight: f3(goldenLight),
+    nightDepth: f3(nightDepth),
     phase,
     season,
     seasonWeights: Object.fromEntries(SEASONS.map(key => [key, f3(weights[key])])) as Record<PondSeason, number>,
@@ -191,6 +196,7 @@ export function deriveEnvironment(moment: PondMoment, seasonOverride?: PondSeaso
     plantCoverage: f3(plantCoverage),
     bloom: f3(bloom),
     summerBloom: f3(weights.summer),
+    lotusOpenness: f3(lotusOpenness),
     mapleDrift: f3(weights.autumn),
     iceCoverage: f3(weights.winter),
     surfaceActivity: f3(surfaceActivity),

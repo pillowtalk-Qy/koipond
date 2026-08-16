@@ -180,7 +180,7 @@ describe('render', () => {
     expect(light).toContain('@keyframes floor{0%,100%')
     expect(light).toContain('id="floorSoft"')
     expect(light).toContain('<path class="floor"')
-    expect((light.match(/class="floor"/g) ?? []).length).toBe(4)
+    expect((light.match(/class="floor"/g) ?? []).length).toBe(5)
     expect((light.match(/class="current"/g) ?? []).length).toBe(3)
   })
 

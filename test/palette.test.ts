@@ -33,4 +33,15 @@ describe('environment palette', () => {
     expect(morning.waterTop).not.toBe(afternoon.waterTop)
     expect(morning.fishFilter).not.toBe(afternoon.fishFilter)
   })
+
+  it('keeps a distinct ecology palette for every seasonal night', () => {
+    const moment = momentFromText('2026-08-16', '00:00')
+    const themes = ['spring', 'summer', 'autumn', 'winter'].map(season =>
+      themeForEnvironment(deriveEnvironment(moment, season as 'spring' | 'summer' | 'autumn' | 'winter')),
+    )
+
+    expect(new Set(themes.map(theme => theme.waterTop)).size).toBe(4)
+    expect(new Set(themes.map(theme => theme.plankton[3])).size).toBe(4)
+    expect(new Set(themes.map(theme => theme.nightTint)).size).toBe(4)
+  })
 })

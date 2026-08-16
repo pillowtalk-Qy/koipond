@@ -29,14 +29,14 @@ function smoothClosedPath(points: Array<{ x: number; y: number }>): string {
 
 export function floorBlotches(width: number, r: () => number, opacityScale = 1): string {
   let out = ''
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < 5; i++) {
     const x = f1(width * (0.12 + r() * 0.76))
-    const y = f1(30 + r() * (LAYOUT.height - 60))
-    const duration = f1(24 + r() * 10)
+    const y = f1(24 + r() * (LAYOUT.height - 48))
+    const duration = f1(28 + r() * 12)
     const delay = f1(r() * 18)
-    const opacity = ((0.34 + r() * 0.18) * opacityScale).toFixed(2)
-    const rx = 54 + r() * 72
-    const ry = 17 + r() * 18
+    const opacity = ((0.26 + r() * 0.14) * opacityScale).toFixed(2)
+    const rx = 36 + r() * 54
+    const ry = 11 + r() * 14
     const points = Array.from({ length: 10 }, (_, point) => {
       const angle = (point / 10) * Math.PI * 2
       const variance = 0.8 + r() * 0.32
@@ -82,6 +82,26 @@ export function godRays(width: number, theme: Theme, r: () => number, sunDirecti
     out += `<path class="ray" style="animation-delay:-${f1(i * 3.7 + r() * 2)}s" d="${d}" fill="${theme.ray}" filter="url(#soft)"/>`
   }
   return out
+}
+
+/** A restrained directional reflection makes sunrise and sunset read without recoloring the whole pond. */
+export function directionalWaterLight(
+  width: number,
+  sunDirection: number,
+  intensity: number,
+): string {
+  if (intensity < 0.012) return ''
+  const centerX = width * (0.5 + sunDirection * 0.29)
+  const rotation = sunDirection * -7
+  const rx = width * (0.13 + intensity * 0.12)
+  const ry = 16 + intensity * 28
+  return (
+    `<g data-pond-part="directional-light" opacity="${f1(Math.min(0.34, intensity))}">` +
+    `<ellipse class="sun-path" cx="${f1(centerX)}" cy="${f1(LAYOUT.height * 0.42)}" ` +
+    `rx="${f1(rx)}" ry="${f1(ry)}" transform="rotate(${f1(rotation)} ${f1(centerX)} ${f1(LAYOUT.height * 0.42)})" ` +
+    `fill="url(#sunPathG)" filter="url(#soft)"/>` +
+    `</g>`
+  )
 }
 
 /** Bright band along the top edge so the water reads as a surface seen from above. */
@@ -151,7 +171,18 @@ export function lilyPads(width: number, theme: Theme, seed: string, coverage = 1
     .join('')
 }
 
-function smallLotus(theme: Theme, scale: number, delay: number): string {
+const clamp01 = (value: number) => Math.max(0, Math.min(1, value))
+
+function lotusState(openness: number) {
+  return openness >= 0.72 ? 'open' : openness >= 0.3 ? 'opening' : 'sleeping'
+}
+
+function smallLotus(theme: Theme, scale: number, delay: number, openness: number): string {
+  const open = clamp01(openness)
+  const openOpacity = clamp01((open - 0.16) / 0.72)
+  const budOpacity = 1 - clamp01((open - 0.34) / 0.5)
+  const openScaleX = 0.42 + open * 0.58
+  const openScaleY = 0.24 + open * 0.76
   let petals = ''
   for (let index = 0; index < 7; index++) {
     petals += `<ellipse rx="5.2" ry="2" transform="rotate(${index * (360 / 7)})" fill="${theme.lotusOuter}"/>`
@@ -161,22 +192,35 @@ function smallLotus(theme: Theme, scale: number, delay: number): string {
     inner += `<ellipse rx="3.2" ry="1.35" transform="rotate(${18 + index * 72})" fill="${theme.lotusInner}"/>`
   }
   return (
-    `<g transform="scale(${f1(scale)})">` +
+    `<g data-lotus-state="${lotusState(open)}" data-lotus-openness="${open.toFixed(3)}" transform="scale(${f1(scale)})">` +
     `<ellipse cx="1.8" cy="2.5" rx="7.2" ry="6" fill="rgba(0,20,25,0.18)"/>` +
-    `<g class="bloom" style="animation-delay:-${f1(delay)}s">${petals}${inner}<circle r="1.7" fill="${theme.lotusHeart}"/></g>` +
+    `<g class="lotus-open-stage" opacity="${openOpacity.toFixed(3)}" transform="scale(${f1(openScaleX)} ${f1(openScaleY)})">` +
+    `<g class="bloom" style="animation-delay:-${f1(delay)}s">${petals}${inner}<circle r="1.7" fill="${theme.lotusHeart}"/></g></g>` +
+    `<g class="lotus-bud" opacity="${budOpacity.toFixed(3)}" style="animation-delay:-${f1(delay * 0.6)}s">` +
+    `<ellipse rx="2.5" ry="5.8" fill="${theme.lotusOuter}"/>` +
+    `<ellipse rx="2" ry="5.1" transform="rotate(26)" fill="${theme.lotusInner}"/>` +
+    `<ellipse rx="2" ry="5.1" transform="rotate(-26)" fill="${theme.lotusOuter}"/>` +
+    `</g>` +
     `</g>`
   )
 }
 
-export function summerBlooms(width: number, theme: Theme, seed: string, intensity: number): string {
+export function summerBlooms(
+  width: number,
+  theme: Theme,
+  seed: string,
+  intensity: number,
+  openness = 1,
+): string {
   if (intensity < 0.08) return ''
   const pads = lilyPadLayout(width, seed)
   const blooms = [
-    { pad: pads[1], dx: 2, dy: -2, scale: 0.78 },
-    { pad: pads[2], dx: -4, dy: 1, scale: 0.92 },
+    { pad: pads[0], dx: 1, dy: -2, scale: 0.72 },
+    { pad: pads[1], dx: 2, dy: -2, scale: 0.66 },
+    { pad: pads[2], dx: -4, dy: 1, scale: 0.96 },
   ]
     .map(({ pad, dx, dy, scale }, index) =>
-      `<g transform="translate(${f1(pad.x + dx)} ${f1(pad.y + dy)})">${smallLotus(theme, scale, index * 1.7)}</g>`,
+      `<g transform="translate(${f1(pad.x + dx)} ${f1(pad.y + dy)})">${smallLotus(theme, scale, index * 1.7, openness)}</g>`,
     )
     .join('')
   return `<g data-seasonal-part="summer-bloom" opacity="${f1(Math.min(1, intensity * 0.94))}">${blooms}</g>`
@@ -269,8 +313,13 @@ export function winterIce(
   return `<g data-seasonal-part="winter-ice" opacity="${f1(visibleCoverage * 0.96)}">${elements}</g>`
 }
 
-export function lotus(x: number, theme: Theme, r: () => number): string {
+export function lotus(x: number, theme: Theme, r: () => number, openness = 1): string {
   const y = 24 + r() * 6
+  const open = clamp01(openness)
+  const openOpacity = clamp01((open - 0.16) / 0.72)
+  const budOpacity = 1 - clamp01((open - 0.34) / 0.5)
+  const openScaleX = 0.42 + open * 0.58
+  const openScaleY = 0.24 + open * 0.76
   let petals = ''
   for (let k = 0; k < 8; k++) {
     petals += `<ellipse rx="7" ry="2.9" transform="rotate(${k * 45})" fill="${theme.lotusOuter}"/>`
@@ -284,7 +333,14 @@ export function lotus(x: number, theme: Theme, r: () => number): string {
     `<ellipse cx="2.5" cy="3.5" rx="13" ry="12" fill="rgba(0,20,25,0.2)"/>` +
     `<circle r="12.5" fill="${theme.lily}" opacity="0.9"/>` +
     `<circle r="12.5" fill="none" stroke="${theme.lilyLight}" stroke-width="1.4" opacity="0.8"/>` +
-    `<g class="bloom">${petals}${inner}<circle r="2.3" fill="${theme.lotusHeart}"/></g>` +
+    `<g data-lotus-state="${lotusState(open)}" data-lotus-openness="${open.toFixed(3)}">` +
+    `<g class="lotus-open-stage" opacity="${openOpacity.toFixed(3)}" transform="scale(${f1(openScaleX)} ${f1(openScaleY)})">` +
+    `<g class="bloom">${petals}${inner}<circle r="2.3" fill="${theme.lotusHeart}"/></g></g>` +
+    `<g class="lotus-bud" opacity="${budOpacity.toFixed(3)}">` +
+    `<ellipse rx="3.5" ry="8" fill="${theme.lotusOuter}"/>` +
+    `<ellipse rx="2.8" ry="7" transform="rotate(25)" fill="${theme.lotusInner}"/>` +
+    `<ellipse rx="2.8" ry="7" transform="rotate(-25)" fill="${theme.lotusOuter}"/>` +
+    `</g></g>` +
     `</g>`
   )
 }
