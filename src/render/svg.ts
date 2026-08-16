@@ -547,8 +547,8 @@ export function renderSVG(
 @keyframes lotus-bud{from{transform:translateY(0) rotate(-2deg)}to{transform:translateY(-0.5px) rotate(2deg)}}
 @keyframes summer-lotus-bud{from{transform:scale(0.99)}to{transform:scale(1.01)}}
 @keyframes firefly-flight{0%,100%{transform:translate(0,0)}29%{transform:translate(var(--ffx1),var(--ffy1))}64%{transform:translate(var(--ffx2),var(--ffy2))}82%{transform:translate(var(--ffx3),var(--ffy3))}}
-@keyframes firefly-glow{0%,100%{transform:scale(0.72);opacity:0.2}32%{transform:scale(1);opacity:1}54%{transform:scale(0.78);opacity:0.28}78%{transform:scale(0.94);opacity:0.82}}
-@keyframes snowfall{0%{transform:translate(0,-12px) rotate(0);opacity:0}9%{opacity:var(--snow-opacity)}42%{transform:translate(var(--snow-x1),76px) rotate(72deg);opacity:var(--snow-opacity)}73%{transform:translate(var(--snow-x2),139px) rotate(132deg);opacity:var(--snow-opacity)}92%{opacity:var(--snow-opacity)}100%{transform:translate(var(--snow-x3),202px) rotate(185deg);opacity:0}}
+@keyframes firefly-glow{0%,100%{transform:scale(0.76);opacity:0.34}28%{transform:scale(1.06);opacity:1}52%{transform:scale(0.82);opacity:0.4}76%{transform:scale(1);opacity:0.9}}
+@keyframes snowfall{0%{transform:translate(0,-14px) rotate(0);opacity:0}7%{opacity:var(--snow-opacity)}28%{transform:translate(var(--snow-x1),52px) rotate(68deg);opacity:var(--snow-opacity)}58%{transform:translate(var(--snow-x2),116px) rotate(148deg);opacity:var(--snow-opacity)}91%{opacity:var(--snow-opacity)}100%{transform:translate(var(--snow-x3),212px) rotate(250deg);opacity:0}}
 @keyframes sun-path{from{transform:translateX(${f1(-lightDrift)}px) scale(0.98)}to{transform:translateX(${f1(lightDrift)}px) scale(1.02)}}
 @keyframes moon-path{from{transform:translateX(${f1(-moonDrift)}px) scale(0.94,0.98);opacity:0.72}to{transform:translateX(${f1(moonDrift)}px) scale(1.08,1.03);opacity:1}}
 @keyframes paddle{from{transform:rotate(14deg)}to{transform:rotate(-14deg)}}

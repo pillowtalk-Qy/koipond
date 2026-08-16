@@ -268,32 +268,35 @@ export function summerFireflies(width: number, seed: string, intensity: number):
   if (intensity < 0.08) return ''
   const r = rng(`fireflies:${seed}`)
   const pads = lilyPadLayout(width, seed)
-  const count = Math.round(4 + Math.min(1, intensity) * 4)
+  const count = Math.round(7 + Math.min(1, intensity) * 4)
   let fireflies = ''
   for (let index = 0; index < count; index++) {
     const pad = pads[index % pads.length]
     const angle = r() * Math.PI * 2
-    const distance = 24 + r() * 42
+    const distance = 20 + r() * 52
     const x = Math.max(18, Math.min(width - 18, pad.x + Math.cos(angle) * distance))
     const y = Math.max(18, Math.min(LAYOUT.height - 24, pad.y + Math.sin(angle) * distance * 0.52))
-    const x1 = (r() - 0.5) * 15
-    const y1 = (r() - 0.5) * 8
-    const x2 = x1 + (r() - 0.5) * 13
-    const y2 = y1 + (r() - 0.5) * 9
-    const x3 = (r() - 0.5) * 12
-    const y3 = (r() - 0.5) * 7
-    const duration = 10 + r() * 7
+    const x1 = (r() - 0.5) * 26
+    const y1 = (r() - 0.5) * 14
+    const x2 = x1 + (r() - 0.5) * 22
+    const y2 = y1 + (r() - 0.5) * 15
+    const x3 = (r() - 0.5) * 20
+    const y3 = (r() - 0.5) * 12
+    const duration = 7.5 + r() * 5
     const delay = r() * duration
-    const pulse = 2.1 + r() * 1.8
+    const pulse = 1.5 + r() * 1.6
+    const scale = index % 4 === 0 ? 1.08 + r() * 0.16 : 0.88 + r() * 0.16
     fireflies +=
       `<g transform="translate(${f1(x)} ${f1(y)})">` +
       `<g class="firefly-flight" style="--ffx1:${f1(x1)}px;--ffy1:${f1(y1)}px;--ffx2:${f1(x2)}px;--ffy2:${f1(y2)}px;--ffx3:${f1(x3)}px;--ffy3:${f1(y3)}px;animation-duration:${f1(duration)}s;animation-delay:-${f1(delay)}s">` +
+      `<g transform="scale(${f1(scale)})">` +
       `<g class="firefly-glow" style="animation-duration:${f1(pulse)}s;animation-delay:-${f1(delay * 0.37)}s">` +
-      `<circle r="3" fill="#d9f47f" opacity="0.14"/>` +
-      `<circle r="0.78" fill="#f4ffb2"/>` +
-      `</g></g></g>`
+      `<circle r="5.2" fill="#dfff75" opacity="0.09"/>` +
+      `<circle r="2.5" fill="#eaff8b" opacity="0.24"/>` +
+      `<circle r="1" fill="#fbffc9"/>` +
+      `</g></g></g></g>`
   }
-  return `<g data-seasonal-part="summer-fireflies" opacity="${f1(Math.min(0.9, intensity * 0.9))}">${fireflies}</g>`
+  return `<g data-seasonal-part="summer-fireflies" opacity="${f1(Math.min(0.96, intensity * 0.96))}">${fireflies}</g>`
 }
 
 const MAPLE_PATH =
@@ -402,29 +405,33 @@ export function winterSnowfall(
 ): string {
   if (intensity < 0.08) return ''
   const r = rng(`snowfall:${seed}`)
-  const count = Math.round(9 + Math.min(1, intensity) * 9)
-  const wind = currentDirection * (8 + currentStrength * 15)
+  const count = Math.round(18 + Math.min(1, intensity) * 12)
+  const wind = currentDirection * (11 + currentStrength * 20)
   let flakes = ''
   for (let index = 0; index < count; index++) {
     const x = 16 + r() * (width - 32)
-    const drift = wind + (r() - 0.5) * 14
-    const x1 = drift * 0.3 + (r() - 0.5) * 7
-    const x2 = drift * 0.68 + (r() - 0.5) * 8
-    const duration = 12 + r() * 10
+    const drift = wind + (r() - 0.5) * 22
+    const x1 = drift * 0.28 + (r() - 0.5) * 11
+    const x2 = drift * 0.65 + (r() - 0.5) * 12
+    const near = index % 6 === 0
+    const middle = !near && index % 3 === 0
+    const depth = near ? 'near' : middle ? 'middle' : 'far'
+    const duration = near ? 7.5 + r() * 3 : middle ? 9.5 + r() * 4 : 12 + r() * 7
     const delay = r() * duration
-    const near = index % 4 === 0
-    const scale = near ? 0.86 + r() * 0.34 : 0.48 + r() * 0.36
-    const opacity = near ? 0.64 + r() * 0.18 : 0.34 + r() * 0.2
+    const scale = near ? 1.45 + r() * 0.45 : middle ? 0.95 + r() * 0.35 : 0.55 + r() * 0.31
+    const opacity = near ? 0.8 + r() * 0.16 : middle ? 0.62 + r() * 0.18 : 0.42 + r() * 0.18
     const flake = near
-      ? `<path d="M-1.8 0 H1.8 M0 -1.8 V1.8" fill="none" stroke="#eefcff" stroke-width="0.55" stroke-linecap="round"/><circle r="0.55" fill="#f7feff"/>`
-      : `<circle r="1.05" fill="#e8f9fc"/>`
+      ? `<circle r="4" fill="#dff8ff" opacity="0.1"/><path d="M-2.4 0 H2.4 M0 -2.4 V2.4 M-1.7 -1.7 L1.7 1.7 M1.7 -1.7 L-1.7 1.7" fill="none" stroke="#f1fdff" stroke-width="0.5" stroke-linecap="round"/><circle r="0.68" fill="#ffffff"/>`
+      : middle
+        ? `<path d="M-1.7 0 H1.7 M0 -1.7 V1.7" fill="none" stroke="#eefcff" stroke-width="0.6" stroke-linecap="round"/><circle r="0.6" fill="#ffffff"/>`
+        : `<circle r="1.12" fill="#e8f9fc"/>`
     flakes +=
-      `<g transform="translate(${f1(x)} 0) scale(${f1(scale)})">` +
+      `<g data-snow-depth="${depth}" transform="translate(${f1(x)} 0) scale(${f1(scale)})">` +
       `<g class="snowfall" style="--snow-x1:${f1(x1)}px;--snow-x2:${f1(x2)}px;--snow-x3:${f1(drift)}px;--snow-opacity:${opacity.toFixed(2)};animation-duration:${f1(duration)}s;animation-delay:-${f1(delay)}s">` +
       flake +
       `</g></g>`
   }
-  return `<g data-seasonal-part="winter-snowfall" opacity="${f1(Math.min(0.92, intensity * 0.92))}">${flakes}</g>`
+  return `<g data-seasonal-part="winter-snowfall" opacity="${f1(Math.min(0.96, intensity * 0.96))}">${flakes}</g>`
 }
 
 export function lotus(
