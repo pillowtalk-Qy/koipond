@@ -33,6 +33,9 @@ export interface PondEnvironment {
   activityRate: number
   plantCoverage: number
   bloom: number
+  summerBloom: number
+  mapleDrift: number
+  iceCoverage: number
   surfaceActivity: number
   winterStillness: number
 }
@@ -158,9 +161,9 @@ export function deriveEnvironment(moment: PondMoment, seasonOverride?: PondSeaso
   const waterTemperature = weights.spring * 17 + weights.summer * 27 + weights.autumn * 19 + weights.winter * 9
   const seasonalActivity = weights.spring * 1 + weights.summer * 1.08 + weights.autumn * 0.92 + weights.winter * 0.7
   const activityRate = seasonalActivity * (0.82 + daylight * 0.18)
-  const plantCoverage = weights.spring * 0.62 + weights.summer + weights.autumn * 0.42 + weights.winter * 0.18
-  const bloom = weights.spring * 0.58 + weights.summer
-  const surfaceActivity = weights.spring * 0.82 + weights.summer + weights.autumn * 0.6 + weights.winter * 0.28
+  const plantCoverage = weights.spring + weights.summer + weights.autumn * 0.58 + weights.winter * 0.22
+  const bloom = weights.spring + weights.summer
+  const surfaceActivity = weights.spring + weights.summer * 1.08 + weights.autumn * 0.7 + weights.winter * 0.34
   const phase: DayPhase = solarAltitude >= 4
     ? 'day'
     : solarAltitude <= -12
@@ -187,6 +190,9 @@ export function deriveEnvironment(moment: PondMoment, seasonOverride?: PondSeaso
     activityRate: f3(activityRate),
     plantCoverage: f3(plantCoverage),
     bloom: f3(bloom),
+    summerBloom: f3(weights.summer),
+    mapleDrift: f3(weights.autumn),
+    iceCoverage: f3(weights.winter),
     surfaceActivity: f3(surfaceActivity),
     winterStillness: f3(weights.winter),
   }

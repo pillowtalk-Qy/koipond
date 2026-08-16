@@ -1,13 +1,15 @@
 import { LAYOUT, cellCenter, svgWidth } from '../layout'
-import { lilyPadLayout } from '../ecology'
+import { iceFloeLayout, pondObstacleLayout } from '../ecology'
 import type { PondEnvironment } from '../environment'
 import { longestGap, longestStreak } from '../planner'
 import { rng } from '../prng'
 import type { PondProvenance } from '../state'
 import type { Grid, Plan, Waypoint } from '../types'
+import { f1 } from '../util'
 import {
   SOFT_FILTER,
   ambientRipples,
+  autumnMapleLeaves,
   caustics,
   deepShade,
   floorBlotches,
@@ -16,9 +18,11 @@ import {
   lotus,
   motes,
   pebbles,
+  summerBlooms,
   surfaceSheen,
   turtle,
   waterCurrents,
+  winterIce,
 } from './decor'
 import { fishPointAt, fishStaticTrail, fishSVG } from './fish'
 import type { Theme } from './palette'
@@ -126,8 +130,8 @@ function fishKeyframes(
   return css
 }
 
-function bestStaticTime(plan: Plan, width: number, seed: string): number {
-  const pads = lilyPadLayout(width, seed)
+function bestStaticTime(plan: Plan, width: number, seed: string, environment?: PondEnvironment): number {
+  const obstacles = pondObstacleLayout(width, seed, environment)
   let best = { score: -Infinity, time: plan.duration * 0.5 }
 
   for (let index = 0; index <= 72; index++) {
@@ -139,8 +143,8 @@ function bestStaticTime(plan: Plan, width: number, seed: string): number {
       for (const point of trail) {
         const edge = Math.min(point.x, width - point.x, point.y, LAYOUT.height - point.y)
         score += Math.min(42, edge) * 0.05
-        for (const pad of pads) {
-          const clearance = Math.hypot(point.x - pad.x, point.y - pad.y) - pad.radius
+        for (const obstacle of obstacles) {
+          const clearance = Math.hypot(point.x - obstacle.x, point.y - obstacle.y) - obstacle.radius
           score += clearance < 10 ? (clearance - 10) * 8 : Math.min(28, clearance) * 0.015
         }
       }
@@ -161,6 +165,29 @@ function bestStaticTime(plan: Plan, width: number, seed: string): number {
   return best.time
 }
 
+function turtleKeyframes(width: number, turtleY: number, seed: string, environment?: PondEnvironment): string {
+  const floe = environment && environment.iceCoverage >= 0.18
+    ? iceFloeLayout(width, seed, environment.iceCoverage)[1]
+    : undefined
+  if (!floe) {
+    return `@keyframes turtle{0%{transform:translate(-40px,${turtleY}px)}100%{transform:translate(${width + 40}px,${turtleY}px)}}`
+  }
+  const percentAt = (x: number) => Math.max(0, Math.min(100, ((x + 40) / (width + 80)) * 100)).toFixed(2)
+  const iceY = Math.min(turtleY - 6, floe.y - 2)
+  const frame = (x: number, y: number, scale = 1) =>
+    `${percentAt(x)}%{transform:translate(${f1(x)}px,${f1(y)}px) scale(${scale.toFixed(2)})}`
+  return (
+    `@keyframes turtle{` +
+    `0%{transform:translate(-40px,${turtleY}px)}` +
+    frame(floe.x - floe.rx - 14, turtleY) +
+    frame(floe.x - floe.rx + 5, iceY, 1.03) +
+    frame(floe.x, iceY, 1.04) +
+    frame(floe.x + floe.rx - 5, iceY, 1.03) +
+    frame(floe.x + floe.rx + 14, turtleY) +
+    `100%{transform:translate(${width + 40}px,${turtleY}px)}}`
+  )
+}
+
 const escapeXML = (value: string) =>
   value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
 
@@ -176,7 +203,7 @@ export function renderSVG(
   const animationDuration = context.environment
     ? timelineDuration / context.environment.activityRate
     : timelineDuration
-  const staticTime = bestStaticTime(plan, width, seed)
+  const staticTime = bestStaticTime(plan, width, seed, context.environment)
   const r = rng('decor:' + seed)
 
   const eatByCell = new Map(plan.eats.map(e => [e.cell, e]))
@@ -257,6 +284,9 @@ export function renderSVG(
   const moteCount = environment ? Math.round(3 + surfaceMotion * 5) : 8
   const ambientRippleCount = environment ? Math.max(1, Math.round(1 + surfaceMotion * 3)) : 3
   const swayAngle = environment ? 0.9 + surfaceMotion * 2 : 2.6
+  const paddleDuration = environment && environment.iceCoverage >= 0.18 ? 0.9 : 1.4
+  const turtleDuration = Math.max(36, Math.min(64, animationDuration * 0.6))
+  const turtleFrames = turtleKeyframes(width, turtleY, seed, environment)
 
   const base = `
 .pk,.rp{transform-box:fill-box;transform-origin:center;animation-duration:${animationDuration}s;animation-timing-function:linear;animation-iteration-count:infinite}
@@ -270,13 +300,15 @@ export function renderSVG(
 .ray{opacity:${rayFloor.toFixed(3)};animation:ray 9.5s ease-in-out infinite alternate}
 .sway{transform-box:fill-box;transform-origin:center;animation-name:sway;animation-timing-function:ease-in-out;animation-iteration-count:infinite;animation-direction:alternate}
 .bloom{transform-box:fill-box;transform-origin:center;animation:bloom 5.2s ease-in-out infinite alternate}
-.paddle{transform-box:fill-box;transform-origin:center;animation:paddle 1.4s ease-in-out infinite alternate}
+.paddle{transform-box:fill-box;transform-origin:center;animation:paddle ${paddleDuration}s ease-in-out infinite alternate}
 .ca{opacity:${causticOpacity.toFixed(3)};animation:ca 15s ease-in-out infinite alternate}
 .floor{transform-box:fill-box;transform-origin:center;animation-name:floor;animation-timing-function:ease-in-out;animation-iteration-count:infinite;animation-direction:alternate}
 .current{opacity:${currentPeak.toFixed(3)};animation:current 19s ease-in-out infinite alternate}
 .mo{opacity:0;animation-name:mo;animation-timing-function:linear;animation-iteration-count:infinite}
 .ar{transform-box:fill-box;transform-origin:center;opacity:0;animation:ar 9s linear infinite}
-.turtle{transform:translate(${(width * 0.58).toFixed(1)}px,${turtleY}px);animation:turtle ${animationDuration}s linear infinite}
+.maple{transform-box:fill-box;transform-origin:center;animation-name:maple;animation-timing-function:ease-in-out;animation-iteration-count:infinite;animation-direction:alternate}
+.ice-glint{animation:ice-glint 5.8s ease-in-out infinite alternate}
+.turtle{transform:translate(${(width * 0.58).toFixed(1)}px,${turtleY}px);animation:turtle ${turtleDuration}s linear infinite}
 .night{opacity:0;animation:night ${animationDuration}s linear infinite}
 @keyframes tw{from{opacity:0.06}to{opacity:0.26}}
 @keyframes ray{from{opacity:${rayFloor.toFixed(3)}}to{opacity:${rayPeak.toFixed(3)}}}
@@ -288,7 +320,9 @@ export function renderSVG(
 @keyframes current{from{transform:translateX(-22px);opacity:${currentFloor.toFixed(3)}}to{transform:translateX(24px);opacity:${currentPeak.toFixed(3)}}}
 @keyframes mo{0%{transform:translate(0,0);opacity:0}15%{opacity:0.55}85%{opacity:0.4}100%{transform:translate(14px,-26px);opacity:0}}
 @keyframes ar{0%{transform:scale(0.2);opacity:0}6%{opacity:0.22}26%,100%{transform:scale(3.6);opacity:0}}
-@keyframes turtle{0%{transform:translate(-40px,${turtleY}px)}100%{transform:translate(${width + 40}px,${turtleY}px)}}
+@keyframes maple{from{transform:translate(-4px,-2px) rotate(-7deg)}to{transform:translate(7px,5px) rotate(8deg)}}
+@keyframes ice-glint{from{opacity:0.56}to{opacity:0.9}}
+${turtleFrames}
 @keyframes night{0%,91%{opacity:0}95%,97.5%{opacity:${theme.night}}100%{opacity:0}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important}.rp,.tw,.mo,.ar,.night{opacity:0!important}.floor{opacity:${floorPeak.toFixed(3)}}.current{opacity:${currentPeak.toFixed(3)}}.ca{opacity:${causticOpacity.toFixed(3)}}.ray{opacity:${rayPeak.toFixed(3)}}}
 `
@@ -314,7 +348,6 @@ export function renderSVG(
     ? `<metadata id="koipond-environment">${escapeXML(JSON.stringify(context.environment))}</metadata>`
     : ''
   const lotusPresence = environment?.bloom ?? 1
-  const turtlePresence = environment ? 1 - environment.winterStillness * 0.18 : 1
   const environmentDescription = context.environment
     ? ` It is ${context.environment.phase} in ${context.environment.season}.`
     : ''
@@ -361,11 +394,14 @@ export function renderSVG(
     `<rect width="${width}" height="${LAYOUT.height}" rx="10" fill="url(#vig)"/>` +
     surfaceSheen(width, theme, sheenIntensity) +
     lilyPads(width, theme, seed, environment?.plantCoverage ?? 1) +
+    summerBlooms(width, theme, seed, environment?.summerBloom ?? 0) +
     (hasLotus && lotusPresence >= 0.35
       ? `<g opacity="${lotusPresence.toFixed(3)}">${lotus(lotusX, theme, r)}</g>`
       : '') +
-    (hasTurtle ? `<g opacity="${turtlePresence.toFixed(3)}">${turtle(theme)}</g>` : '') +
     plan.fishes.map(f => `<g>${fishSVG(f, theme, staticTime, timelineDuration)}</g>`).join('') +
+    autumnMapleLeaves(width, theme, seed, environment?.mapleDrift ?? 0) +
+    winterIce(width, theme, seed, environment?.iceCoverage ?? 0, hasTurtle) +
+    (hasTurtle ? turtle(theme) : '') +
     ambientRipples(width, theme, r, ambientRippleCount) +
     motes(width, theme, r, moteCount) +
     `<rect class="night" width="${width}" height="${LAYOUT.height}" rx="10" fill="#000d14"/>` +

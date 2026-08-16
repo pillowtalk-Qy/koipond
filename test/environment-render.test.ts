@@ -28,19 +28,24 @@ describe('environment-aware original renderer', () => {
     expect(svg).toContain('id="koipond-environment"')
     expect(svg).toContain('"season":"winter"')
     expect(svg.match(/data-pond-part="lily-pad"/g)).toHaveLength(1)
-    expect(svg).not.toContain('class="leaf"')
-    expect(svg).not.toContain('surface ice')
+    expect(svg).toContain('data-seasonal-part="winter-ice"')
+    expect(svg).not.toContain('data-seasonal-part="autumn-maple"')
     expect(meta.duration).toBeGreaterThan(pondPlan.duration)
   })
 
-  it('changes the environment without changing the underlying fish plan', () => {
+  it('uses physical seasonal markers while spring keeps the original pond', () => {
     const spring = deriveEnvironment(momentFromText('2026-04-15', '12:00'), 'spring')
+    const summer = deriveEnvironment(momentFromText('2026-07-15', '12:00'), 'summer')
     const autumn = deriveEnvironment(momentFromText('2026-10-15', '12:00'), 'autumn')
     const springSvg = renderSVG(grid, pondPlan, themeForEnvironment(spring), 'seasonal-render', { environment: spring }).svg
+    const summerSvg = renderSVG(grid, pondPlan, themeForEnvironment(summer), 'seasonal-render', { environment: summer }).svg
     const autumnSvg = renderSVG(grid, pondPlan, themeForEnvironment(autumn), 'seasonal-render', { environment: autumn }).svg
     expect(springSvg).not.toBe(autumnSvg)
-    expect(springSvg.match(/data-pond-part="lily-pad"/g)).toHaveLength(3)
-    expect(autumnSvg.match(/data-pond-part="lily-pad"/g)).toHaveLength(2)
+    expect(springSvg.match(/data-pond-part="lily-pad"/g)).toHaveLength(4)
+    expect(springSvg).not.toContain('data-seasonal-part=')
+    expect(summerSvg).toContain('data-seasonal-part="summer-bloom"')
+    expect(autumnSvg).toContain('data-seasonal-part="autumn-maple"')
+    expect(autumnSvg.match(/data-pond-part="lily-pad"/g)).toHaveLength(3)
     expect(pondPlan.fishes.every(fish => springSvg.includes(`@keyframes fp${fish.id}`))).toBe(true)
     expect(pondPlan.fishes.every(fish => autumnSvg.includes(`@keyframes fp${fish.id}`))).toBe(true)
   })

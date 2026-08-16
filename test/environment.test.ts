@@ -30,6 +30,8 @@ describe('pond environment', () => {
     const environment = deriveEnvironment(momentFromText('2026-08-16', '12:00'), 'winter')
     expect(environment.season).toBe('winter')
     expect(environment.seasonWeights.winter).toBe(1)
+    expect(environment.iceCoverage).toBe(1)
+    expect(environment.mapleDrift).toBe(0)
   })
 
   it('moves directional light across the pond during the day', () => {

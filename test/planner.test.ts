@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { demoGrid } from '../src/demo'
-import { cellEnergy, desiredPopulation, ecosystemStats, lilyPadLayout } from '../src/ecology'
+import { cellEnergy, desiredPopulation, ecosystemStats, lilyPadLayout, pondObstacleLayout } from '../src/ecology'
+import { deriveEnvironment, momentFromText } from '../src/environment'
 import { svgWidth } from '../src/layout'
 import { ACTIVE_FRACTION, longestGap, longestStreak, plan } from '../src/planner'
 import { THEMES } from '../src/render/palette'
@@ -16,6 +17,28 @@ describe('planner', () => {
 
   it('differs across seeds', () => {
     expect(JSON.stringify(plan(grid, 'a'))).not.toBe(JSON.stringify(plan(grid, 'b')))
+  })
+
+  it('replans winter routes around the shared ice geometry', () => {
+    const winter = deriveEnvironment(momentFromText('2026-01-15', '12:00'), 'winter')
+    const regular = plan(grid, 'x')
+    const frozen = plan(grid, 'x', undefined, winter)
+    const ice = pondObstacleLayout(svgWidth(grid.weeks), 'x', winter).filter(obstacle => obstacle.kind === 'ice')
+    expect(frozen).not.toEqual(regular)
+    expect(ice).toHaveLength(15)
+    expect(frozen.eats).toHaveLength(grid.cells.filter(cell => cell.level > 0).length)
+    let minimumClearance = Infinity
+    for (const fish of frozen.fishes) {
+      for (const waypoint of fish.waypoints) {
+        for (const obstacle of ice) {
+          minimumClearance = Math.min(
+            minimumClearance,
+            Math.hypot(waypoint.x - obstacle.x, waypoint.y - obstacle.y) - obstacle.radius,
+          )
+        }
+      }
+    }
+    expect(minimumClearance).toBeGreaterThan(0)
   })
 
   it('eats every plankton exactly once', () => {

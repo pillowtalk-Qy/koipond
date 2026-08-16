@@ -50,8 +50,10 @@ The graph does not just feed the fish, it shapes the ecosystem:
 - **Dark mode is bioluminescent**: an abyssal pond, twinkling plankton, glowing spirit koi.
 - **The original light and dark ponds form one 24-hour cycle**: the sun's height and direction move
   the original rays, caustics, surface sheen and shadows through dawn, daylight, dusk and night.
-- **The year moves continuously through four distinct ecologies**: spring growth, summer bloom,
-  autumn retreat and winter stillness change the original water, plankton, lily pads and activity.
+- **The year moves continuously through four physical ecologies**: spring keeps the original pond,
+  summer fills its lily pads with flowers, maple leaves drift through autumn, and winter ice and
+  snow become real obstacles that fish route around. A streak turtle climbs onto the ice and back
+  into the water instead of passing beneath it.
 
 This `original-plus` branch deliberately keeps the original composition and art direction. Its changes
 are behavioral: the same contribution graph now produces a more causal ecosystem instead of adding
@@ -226,11 +228,12 @@ npm run verify:state -- pond-state.json previous-pond-state.json
    preserves fish identity and credits only new energy. Canonical JSON and SHA-256 bind the source
    calendar, complete state and previous revision into an independently verifiable chain.
 3. **Ecology** (`src/ecology.ts`): contribution levels become conserved energy, activity patterns
-   become stable ecosystem traits, and lily-pad geometry is shared by rendering and path planning.
+   become stable ecosystem traits, and lily-pad and winter-ice geometry are shared by rendering
+   and path planning.
 4. **Environment** (`src/environment.ts`): calculates solar altitude from date, local time,
    latitude, longitude and the equation of time; drives directional rays, caustics, shadows and
    surface activity while blending the original light/dark palettes; and derives narrow,
-   overlapping seasonal weights rather than switching the whole scene on four hard dates.
+   overlapping seasonal weights for blooms, maple drift, ice coverage and winter stillness.
 5. **Planner** (`src/planner.ts`): a seeded steering-physics simulation. Fish accelerate under a
    capped force toward their next plankton, change pace with satiety, separate, school, avoid pond
    obstacles and bounce softly off the walls. Deterministic, so the same grid + seed always bakes
@@ -249,7 +252,7 @@ npm run verify:state -- pond-state.json previous-pond-state.json
 - [x] GitHub Action packaging with persistent state and query-string options
 - [x] GIF and MP4 output (headless browser capture)
 - [x] Continuous 24-hour solar direction, light, dawn, dusk and night from the original two palettes
-- [x] Four-season ecology with distinct plant coverage, bloom, water, plankton and activity
+- [x] Four-season ecology with summer blooms, autumn maple drift and interactive winter ice
 - [ ] More species, decor unlocked by achievements, GitLab support
 
 ## Contributing

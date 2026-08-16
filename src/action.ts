@@ -84,7 +84,9 @@ for (const line of outputs) {
   const environment = environmentFromParams(params)
   const theme = environment ? themeForEnvironment(environment) : THEMES[themeKey]
   const seed = params.get('seed') ?? user
-  const p = planFor(seed)
+  const p = environment
+    ? plan(grid, seed, seed === user ? nextState.fish : undefined, environment)
+    : planFor(seed)
   const context: RenderContext =
     seed === user
       ? { provenance: provenanceFor(nextState), highlightedCells: highlightedCells(grid, nextState) }

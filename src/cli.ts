@@ -82,6 +82,9 @@ const preparedState = values.state ? preparePondState(grid, owner, seed, previou
 const feedingPlan = plan(grid, seed, preparedState?.identities)
 const nextState = preparedState ? finalizePondState(preparedState, feedingPlan) : null
 const p = nextState ? plan(grid, seed, nextState.fish) : feedingPlan
+const renderPlan = environment
+  ? plan(grid, seed, nextState?.fish ?? preparedState?.identities, environment)
+  : p
 
 mkdirSync(values.out, { recursive: true })
 const outputs: Record<string, string> = {}
@@ -95,7 +98,7 @@ for (const key of themes) {
     ? { provenance: provenanceFor(nextState), highlightedCells: highlightedCells(grid, nextState) }
     : {}
   context.environment = environment
-  const { svg, meta } = renderSVG(grid, p, theme, seed, context)
+  const { svg, meta } = renderSVG(grid, renderPlan, theme, seed, context)
   const file = join(values.out, `koipond-${key}.svg`)
   writeFileSync(file, svg)
   outputs[key] = svg
@@ -110,7 +113,7 @@ if (values.video) {
   const key = file.includes('dark') && outputs.dark ? 'dark' : themes[0]
   const loopDuration = renderSVG(
     grid,
-    p,
+    renderPlan,
     environment ? themeForEnvironment(environment) : THEMES[key as 'light' | 'dark'],
     seed,
     { environment },

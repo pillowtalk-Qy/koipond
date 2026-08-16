@@ -1,4 +1,5 @@
-import { cellEnergy, desiredPopulation, ecosystemStats, lilyPadLayout } from './ecology'
+import { cellEnergy, desiredPopulation, ecosystemStats, pondObstacleLayout } from './ecology'
+import type { PondEnvironment } from './environment'
 import { rng } from './prng'
 import { LAYOUT, cellCenter, svgWidth } from './layout'
 import type { EatEvent, FishIdentity, FishPlan, Grid, Plan } from './types'
@@ -28,11 +29,11 @@ interface Sim {
   satiety: number
 }
 
-export function plan(grid: Grid, seed: string, identities?: FishIdentity[]): Plan {
+export function plan(grid: Grid, seed: string, identities?: FishIdentity[], environment?: PondEnvironment): Plan {
   const r = rng('plan:' + seed)
   const width = svgWidth(grid.weeks)
   const stats = ecosystemStats(grid)
-  const obstacles = lilyPadLayout(width, seed)
+  const obstacles = pondObstacleLayout(width, seed, environment)
   const targets: Target[] = grid.cells
     .filter(c => c.level > 0)
     .map(c => ({
@@ -121,10 +122,10 @@ export function plan(grid: Grid, seed: string, identities?: FishIdentity[]): Pla
       const ox = (useFuture ? futureX : s.pos.x) - obstacle.x
       const oy = (useFuture ? futureY : s.pos.y) - obstacle.y
       const od = Math.hypot(ox, oy) || 1
-      const clearance = obstacle.radius + 8 + s.f.size * 7
+      const clearance = obstacle.radius + (obstacle.kind === 'ice' ? 10 : 8) + s.f.size * 7
       if (od < clearance) {
         const strength = 1 - od / clearance
-        const push = s.maxForce * 2.1 * strength * strength
+        const push = s.maxForce * (obstacle.kind === 'ice' ? 3.6 : 2.1) * strength * strength
         ax += (ox / od) * push
         ay += (oy / od) * push
         const side = s.f.id % 2 === 0 ? 1 : -1
@@ -188,6 +189,24 @@ export function plan(grid: Grid, seed: string, identities?: FishIdentity[]): Pla
     s.vel.y = (s.vel.y / v) * vc
     s.pos.x += s.vel.x * SIM_DT
     s.pos.y += s.vel.y * SIM_DT
+
+    for (const obstacle of obstacles) {
+      if (obstacle.kind !== 'ice') continue
+      const ox = s.pos.x - obstacle.x
+      const oy = s.pos.y - obstacle.y
+      const distance = Math.hypot(ox, oy) || 1
+      const boundary = obstacle.radius + 0.75
+      if (distance >= boundary) continue
+      const nx = ox / distance
+      const ny = oy / distance
+      s.pos.x = obstacle.x + nx * boundary
+      s.pos.y = obstacle.y + ny * boundary
+      const inwardVelocity = s.vel.x * nx + s.vel.y * ny
+      if (inwardVelocity < 0) {
+        s.vel.x -= inwardVelocity * nx
+        s.vel.y -= inwardVelocity * ny
+      }
+    }
   }
 
   const remaining = [...targets]

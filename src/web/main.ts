@@ -102,9 +102,10 @@ function renderAuto() {
   if (!currentGrid || !currentPlan) return
   if (live.checked) updateLiveInputs()
   const environment = selectedEnvironment()
+  const environmentPlan = plan(currentGrid, currentUser, undefined, environment)
   svgs.auto = renderSVG(
     currentGrid,
-    currentPlan,
+    environmentPlan,
     themeForEnvironment(environment),
     currentUser,
     { environment },

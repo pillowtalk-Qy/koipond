@@ -1,5 +1,6 @@
 import { LAYOUT } from '../layout'
-import { lilyPadLayout } from '../ecology'
+import { iceFloeLayout, lilyPadLayout, type IceFloeSpec } from '../ecology'
+import { rng } from '../prng'
 import { f1 } from '../util'
 import type { Theme } from './palette'
 
@@ -120,6 +121,135 @@ export function lilyPads(width: number, theme: Theme, seed: string, coverage = 1
         : `<g opacity="${f1(opacity)}">${lilyPad(pad.x, pad.y, pad.radius, pad.notchDeg, theme, f1(pad.duration))}</g>`
     })
     .join('')
+}
+
+function smallLotus(theme: Theme, scale: number, delay: number): string {
+  let petals = ''
+  for (let index = 0; index < 7; index++) {
+    petals += `<ellipse rx="5.2" ry="2" transform="rotate(${index * (360 / 7)})" fill="${theme.lotusOuter}"/>`
+  }
+  let inner = ''
+  for (let index = 0; index < 5; index++) {
+    inner += `<ellipse rx="3.2" ry="1.35" transform="rotate(${18 + index * 72})" fill="${theme.lotusInner}"/>`
+  }
+  return (
+    `<g transform="scale(${f1(scale)})">` +
+    `<ellipse cx="1.8" cy="2.5" rx="7.2" ry="6" fill="rgba(0,20,25,0.18)"/>` +
+    `<g class="bloom" style="animation-delay:-${f1(delay)}s">${petals}${inner}<circle r="1.7" fill="${theme.lotusHeart}"/></g>` +
+    `</g>`
+  )
+}
+
+export function summerBlooms(width: number, theme: Theme, seed: string, intensity: number): string {
+  if (intensity < 0.08) return ''
+  const pads = lilyPadLayout(width, seed)
+  const blooms = [
+    { pad: pads[1], dx: 2, dy: -2, scale: 0.78 },
+    { pad: pads[2], dx: -4, dy: 1, scale: 0.92 },
+  ]
+    .map(({ pad, dx, dy, scale }, index) =>
+      `<g transform="translate(${f1(pad.x + dx)} ${f1(pad.y + dy)})">${smallLotus(theme, scale, index * 1.7)}</g>`,
+    )
+    .join('')
+  return `<g data-seasonal-part="summer-bloom" opacity="${f1(Math.min(1, intensity * 0.94))}">${blooms}</g>`
+}
+
+const MAPLE_PATH =
+  'M0 -7 L1.5 -3.2 L4.8 -5 L3.5 -1.2 L7 -0.4 L3.4 1.3 L4.5 5 L1.1 3.2 L0 7 L-1.1 3.2 L-4.5 5 L-3.4 1.3 L-7 -0.4 L-3.5 -1.2 L-4.8 -5 L-1.5 -3.2 Z'
+
+export function autumnMapleLeaves(width: number, theme: Theme, seed: string, intensity: number): string {
+  if (intensity < 0.08) return ''
+  const r = rng(`maple:${seed}`)
+  const colors = theme.key === 'dark'
+    ? ['#a95143', '#b8733e', '#98743d']
+    : ['#d85c42', '#e5833d', '#c69a45']
+  let leaves = ''
+  for (let index = 0; index < 8; index++) {
+    const x = 70 + r() * (width - 140)
+    const y = 28 + r() * (LAYOUT.height - 58)
+    const rotation = r() * 360
+    const scale = 0.65 + r() * 0.45
+    const duration = 10 + r() * 8
+    const delay = r() * duration
+    leaves +=
+      `<g transform="translate(${f1(x)} ${f1(y)}) rotate(${f1(rotation)}) scale(${f1(scale)})">` +
+      `<g class="maple" style="animation-duration:${f1(duration)}s;animation-delay:-${f1(delay)}s">` +
+      `<path d="${MAPLE_PATH}" transform="translate(1.4 1.8)" fill="rgba(0,20,25,0.17)"/>` +
+      `<path d="${MAPLE_PATH}" fill="${colors[index % colors.length]}" stroke="rgba(92,48,29,0.24)" stroke-width="0.7"/>` +
+      `<path d="M0 2 L0 9" stroke="${colors[(index + 1) % colors.length]}" stroke-width="1" stroke-linecap="round"/>` +
+      `</g></g>`
+  }
+  return `<g data-seasonal-part="autumn-maple" opacity="${f1(Math.min(1, intensity * 0.96))}">${leaves}</g>`
+}
+
+function smoothIcePath(floe: IceFloeSpec, seed: string, index: number): string {
+  const r = rng(`ice-shape:${seed}:${index}`)
+  const points = Array.from({ length: 12 }, (_, point) => {
+    const angle = (point / 12) * Math.PI * 2
+    const variance = 0.88 + r() * 0.2
+    return {
+      x: Math.cos(angle) * floe.rx * variance,
+      y: Math.sin(angle) * floe.ry * variance,
+    }
+  })
+  const midpoint = (left: { x: number; y: number }, right: { x: number; y: number }) => ({
+    x: (left.x + right.x) / 2,
+    y: (left.y + right.y) / 2,
+  })
+  const start = midpoint(points[points.length - 1], points[0])
+  let path = `M${f1(start.x)} ${f1(start.y)}`
+  points.forEach((point, pointIndex) => {
+    const next = points[(pointIndex + 1) % points.length]
+    const mid = midpoint(point, next)
+    path += ` Q${f1(point.x)} ${f1(point.y)} ${f1(mid.x)} ${f1(mid.y)}`
+  })
+  return `${path} Z`
+}
+
+function snowTracks(floe: IceFloeSpec): string {
+  let tracks = ''
+  for (let index = -4; index <= 3; index++) {
+    tracks += `<ellipse cx="${index * 12}" cy="${index % 2 === 0 ? -3 : 3}" rx="2.8" ry="1.5" fill="rgba(92,143,155,0.2)" transform="rotate(${index % 2 === 0 ? 18 : -18})"/>`
+  }
+  return `<g aria-label="turtle tracks in snow" opacity="${floe.rx > 55 ? 0.8 : 0}">${tracks}</g>`
+}
+
+export function winterIce(
+  width: number,
+  theme: Theme,
+  seed: string,
+  coverage: number,
+  turtleTracks = false,
+): string {
+  if (coverage < 0.18) return ''
+  const floes = iceFloeLayout(width, seed, coverage)
+  const visibleCoverage = Math.min(1, (coverage - 0.18) / 0.82)
+  const fill = theme.key === 'dark' ? 'rgba(157,211,225,0.38)' : 'rgba(229,247,250,0.82)'
+  const rim = theme.key === 'dark' ? 'rgba(191,236,245,0.55)' : 'rgba(255,255,255,0.9)'
+  const snow = theme.key === 'dark' ? 'rgba(225,246,250,0.5)' : 'rgba(255,255,255,0.9)'
+  const crack = theme.key === 'dark' ? 'rgba(211,244,250,0.3)' : 'rgba(74,137,154,0.32)'
+  const r = rng(`snow:${seed}`)
+  const elements = floes.map((floe, index) => {
+    const path = smoothIcePath(floe, seed, index)
+    const snowPatches = Array.from({ length: index === 1 ? 4 : 3 }, () => {
+      const x = (r() - 0.5) * floe.rx * 0.95
+      const y = (r() - 0.5) * floe.ry * 0.8
+      const rx = 7 + r() * 12
+      const ry = 2.8 + r() * 4
+      return `<ellipse cx="${f1(x)}" cy="${f1(y)}" rx="${f1(rx)}" ry="${f1(ry)}" fill="${snow}" opacity="${f1(0.42 + r() * 0.32)}"/>`
+    }).join('')
+    const tracks = turtleTracks && index === 1 ? snowTracks(floe) : ''
+    return (
+      `<g data-ice-floe="${index}" transform="translate(${f1(floe.x)} ${f1(floe.y)}) rotate(${f1(floe.rotation)})">` +
+      `<path d="${path}" transform="translate(2.5 3.5)" fill="rgba(0,25,35,0.18)"/>` +
+      `<path d="${path}" fill="${fill}" stroke="${rim}" stroke-width="1.5"/>` +
+      `<g class="ice-glint">${snowPatches}</g>` +
+      tracks +
+      `<path d="M-${f1(floe.rx * 0.16)} -2 L-${f1(floe.rx * 0.02)} 2 L${f1(floe.rx * 0.08)} -1 M-${f1(floe.rx * 0.02)} 2 L${f1(floe.rx * 0.05)} 7" fill="none" stroke="${crack}" stroke-width="0.9" stroke-linecap="round"/>` +
+      `</g>`
+    )
+  }).join('')
+  return `<g data-seasonal-part="winter-ice" opacity="${f1(visibleCoverage * 0.96)}">${elements}</g>`
 }
 
 export function lotus(x: number, theme: Theme, r: () => number): string {
