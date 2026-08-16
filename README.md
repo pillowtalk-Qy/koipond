@@ -50,8 +50,10 @@ The graph does not just feed the fish, it shapes the ecosystem:
 - **Dark mode is bioluminescent**: an abyssal pond, twinkling plankton, glowing spirit koi.
 - **The original light and dark ponds form one 24-hour cycle**: the sun's height and direction move
   the original rays, caustics, surface sheen and shadows through dawn, daylight, dusk and night.
+  Each season keeps its own night ecology instead of collapsing into one shared dark palette.
 - **The year moves continuously through four physical ecologies**: spring keeps the original pond,
-  summer fills its lily pads with flowers, and individual maple leaves cross the autumn surface
+  summer fills its lily pads with flowers that open after sunrise and close into buds at night,
+  and individual maple leaves cross the autumn surface
   with their own drift, rotation and wake. Winter ice and snow become real obstacles that fish route
   around; a streak turtle slows at the edge, climbs onto the ice, leaves tracks step by step and
   splashes back into the water instead of passing beneath it.
@@ -99,7 +101,7 @@ jobs:
   generate:
     runs-on: ubuntu-latest
     steps:
-      - uses: pillowtalk-Qy/koipond@d06f8b2dade1750e29988cbe38d25ee93536ec41
+      - uses: pillowtalk-Qy/koipond@6936d05189b8723aed115ee5fdfd7cdc94a0e07c
         with:
           github_user_name: ${{ github.repository_owner }}
           outputs: |
