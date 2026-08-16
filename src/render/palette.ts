@@ -418,6 +418,14 @@ export function themeForEnvironment(environment: PondEnvironment): Theme {
   theme.waterTop = mixColor(theme.waterTop, '#d6f5f4', environment.sunStrength * environment.daylight * 0.1)
   theme.waterMid = mixColor(theme.waterMid, '#82cad2', environment.sunStrength * environment.daylight * 0.035)
 
+  const moonAmount = environment.moonStrength
+  theme.waterTop = mixColor(theme.waterTop, '#c7e6f4', moonAmount * 0.13)
+  theme.waterMid = mixColor(theme.waterMid, '#759cb7', moonAmount * 0.055)
+  theme.sheen = mixColor(theme.sheen, '#e2f6ff', moonAmount * 0.34)
+  theme.ripple = mixColor(theme.ripple, '#d8f5ff', moonAmount * 0.22)
+  theme.mote = mixColor(theme.mote, '#e9f9ff', moonAmount * 0.18)
+  theme.night = Math.max(0.12, theme.night * (1 - moonAmount * 0.2))
+
   const daylightFish = environment.solarAltitude >= 2
   theme.koi = daylightFish ? dayTheme.koi : THEMES.dark.koi
   theme.minnow = daylightFish ? dayTheme.minnow : THEMES.dark.minnow

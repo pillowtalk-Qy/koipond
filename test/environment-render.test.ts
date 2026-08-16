@@ -28,6 +28,8 @@ describe('environment-aware original renderer', () => {
     )
     expect(svg).toContain('id="koipond-environment"')
     expect(svg).toContain('"season":"winter"')
+    expect(svg).toContain('"moonPhase":')
+    expect(svg).toContain('"currentDirection":')
     expect(svg.match(/data-pond-part="lily-pad"/g)).toHaveLength(1)
     expect(svg).toContain('data-seasonal-part="winter-ice"')
     expect(svg).not.toContain('data-seasonal-part="autumn-maple"')
@@ -139,5 +141,33 @@ describe('environment-aware original renderer', () => {
     expect(light(morningSvg)).toBeTruthy()
     expect(light(eveningSvg)).toBeTruthy()
     expect(light(morningSvg)).not.toBe(light(eveningSvg))
+  })
+
+  it('reveals moonlight only when an illuminated moon is above the night pond', () => {
+    const darkMoon = deriveEnvironment(momentFromText('2026-08-16', '00:00', 0, 0, 0), 'summer')
+    const fullMoon = deriveEnvironment(momentFromText('2026-08-28', '00:00', 0, 0, 0), 'summer')
+    const darkSvg = renderSVG(grid, pondPlan, themeForEnvironment(darkMoon), 'seasonal-render', { environment: darkMoon }).svg
+    const fullSvg = renderSVG(grid, pondPlan, themeForEnvironment(fullMoon), 'seasonal-render', { environment: fullMoon }).svg
+
+    expect(darkSvg).not.toContain('data-pond-part="moon-light"')
+    expect(fullSvg).toContain('data-pond-part="moon-light"')
+    expect(fullSvg).toContain('class="moon-path moon-path-a"')
+    expect(fullSvg).toContain('@keyframes moon-path{')
+  })
+
+  it('drives water motion and autumn leaves from the same changing current', () => {
+    const eastward = deriveEnvironment(momentFromText('2026-08-16', '12:00', 0, 0, 0), 'autumn')
+    const westward = deriveEnvironment(momentFromText('2026-08-22', '12:00', 0, 0, 0), 'autumn')
+    const eastSvg = renderSVG(grid, pondPlan, themeForEnvironment(eastward), 'seasonal-render', { environment: eastward }).svg
+    const westSvg = renderSVG(grid, pondPlan, themeForEnvironment(westward), 'seasonal-render', { environment: westward }).svg
+    const currentRule = (svg: string) => svg.match(/@keyframes current\{[^@]+/)?.[0]
+    const firstLeaf = (svg: string) => svg.match(/class="maple" style="([^"]+)/)?.[1] ?? ''
+    const variable = (style: string, name: string) => Number(style.match(new RegExp(`--${name}:([-\\d.]+)px`))?.[1])
+
+    expect(eastward.currentDirection).toBeGreaterThan(0)
+    expect(westward.currentDirection).toBeLessThan(0)
+    expect(currentRule(eastSvg)).not.toBe(currentRule(westSvg))
+    expect(variable(firstLeaf(eastSvg), 'mx0')).toBeLessThan(variable(firstLeaf(eastSvg), 'mx3'))
+    expect(variable(firstLeaf(westSvg), 'mx0')).toBeGreaterThan(variable(firstLeaf(westSvg), 'mx3'))
   })
 })

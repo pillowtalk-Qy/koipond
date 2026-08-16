@@ -17,6 +17,7 @@ import {
   godRays,
   lilyPads,
   lotus,
+  moonWaterLight,
   motes,
   pebbles,
   summerBlooms,
@@ -458,7 +459,9 @@ export function renderSVG(
       (1 - environment.winterStillness * 0.32)
     : 0.07
   const surfaceMotion = environment
-    ? environment.surfaceActivity * (0.45 + environment.daylight * 0.55)
+    ? environment.surfaceActivity *
+      (0.45 + environment.daylight * 0.55) *
+      (0.78 + environment.currentStrength * 0.22)
     : 1
   const sunElevation = environment
     ? Math.max(0, Math.min(1, (environment.solarAltitude + 6) / 72))
@@ -467,7 +470,10 @@ export function renderSVG(
   const shadowShiftX = environment ? -environment.sunDirection * shadowReach : 0
   const shadowShiftY = 0.8 + (1 - sunElevation) * 1.8
   const shadowStretch = 1 + (1 - sunElevation) * 0.05
-  const shadowDrift = 0.65 + surfaceMotion * 0.6
+  const currentDirection = environment?.currentDirection ?? 1
+  const currentStrength = environment?.currentStrength ?? 0.7
+  const currentVector = currentDirection * currentStrength
+  const shadowDrift = (0.65 + surfaceMotion * 0.6) * currentVector
   const floorSoftness = 6.8 - sunElevation * 1.8
   const floorOpacityScale = environment ? 0.16 + environment.daylight * 0.38 : 0.54
   const directionalLightIntensity = environment
@@ -476,9 +482,11 @@ export function renderSVG(
       environment.daylight * (0.018 + environment.sunStrength * 0.045)
     : 0.08
   const lightDrift = environment ? -environment.sunDirection * 2.4 : 1.2
+  const moonDrift = currentVector * 3.2
   const currentPeak = environment
     ? (theme.key === 'light' ? 0.14 : 0.07) *
       (0.42 + surfaceMotion * 0.58) *
+      (0.72 + environment.currentStrength * 0.28) *
       (0.82 + environment.goldenLight * 0.18)
     : theme.key === 'light' ? 0.14 : 0.07
   const currentFloor = currentPeak * 0.5
@@ -488,6 +496,13 @@ export function renderSVG(
   const moteCount = environment ? Math.round(3 + surfaceMotion * 5) : 8
   const ambientRippleCount = environment ? Math.max(1, Math.round(1 + surfaceMotion * 3)) : 3
   const swayAngle = environment ? 0.9 + surfaceMotion * 2 : 2.6
+  const swayBias = currentVector * 1.25
+  const currentFromX = -22 * currentVector
+  const currentToX = 24 * currentVector
+  const causticFromX = -26 * currentVector
+  const causticToX = 26 * currentVector
+  const moteDriftX = 18 * currentVector
+  const currentDuration = 23 - currentStrength * 7
   const paddleDuration = environment && environment.iceCoverage >= 0.18 ? 1.15 : 1.4
   const turtleDuration = Math.max(36, Math.min(64, animationDuration * 0.6))
   const turtleScene = turtleChoreography(
@@ -520,10 +535,12 @@ export function renderSVG(
 .bloom{transform-box:fill-box;transform-origin:center;animation:bloom 5.2s ease-in-out infinite alternate}
 .lotus-bud{transform-box:fill-box;transform-origin:center;animation:lotus-bud 4.8s ease-in-out infinite alternate}
 .sun-path{transform-box:fill-box;transform-origin:center;animation:sun-path 12s ease-in-out infinite alternate}
+.moon-path{transform-box:fill-box;transform-origin:center;animation:moon-path 10.5s ease-in-out infinite alternate}
+.moon-path-b{animation-direction:alternate-reverse;animation-duration:13s}
 .paddle{transform-box:fill-box;transform-origin:center;${turtleWalkingOnIce ? 'animation:none' : `animation:paddle ${paddleDuration}s ease-in-out infinite alternate`}}
 .ca{opacity:${causticOpacity.toFixed(3)};animation:ca 15s ease-in-out infinite alternate}
 .floor{transform-box:fill-box;transform-origin:center;opacity:var(--floor-opacity,0.42);animation-name:floor;animation-timing-function:ease-in-out;animation-iteration-count:infinite}
-.current{opacity:${currentPeak.toFixed(3)};animation:current 19s ease-in-out infinite alternate}
+.current{opacity:${currentPeak.toFixed(3)};animation:current ${currentDuration.toFixed(1)}s ease-in-out infinite alternate}
 .mo{opacity:0;animation-name:mo;animation-timing-function:linear;animation-iteration-count:infinite}
 .ar{transform-box:fill-box;transform-origin:center;opacity:0;animation:ar 9s linear infinite}
 .maple{transform-box:fill-box;transform-origin:center;animation-name:maple;animation-timing-function:linear;animation-iteration-count:infinite}
@@ -536,15 +553,16 @@ export function renderSVG(
 .night{opacity:0;animation:night ${animationDuration}s linear infinite}
 @keyframes tw{from{opacity:0.06}to{opacity:0.26}}
 @keyframes ray{from{opacity:${rayFloor.toFixed(3)}}to{opacity:${rayPeak.toFixed(3)}}}
-@keyframes sway{from{transform:rotate(-${swayAngle.toFixed(1)}deg)}to{transform:rotate(${swayAngle.toFixed(1)}deg)}}
+@keyframes sway{from{transform:rotate(${(swayBias - swayAngle).toFixed(1)}deg)}to{transform:rotate(${(swayBias + swayAngle).toFixed(1)}deg)}}
 @keyframes bloom{from{transform:scale(1)}to{transform:scale(1.07)}}
 @keyframes lotus-bud{from{transform:translateY(0) rotate(-2deg)}to{transform:translateY(-0.5px) rotate(2deg)}}
 @keyframes sun-path{from{transform:translateX(${f1(-lightDrift)}px) scale(0.98)}to{transform:translateX(${f1(lightDrift)}px) scale(1.02)}}
+@keyframes moon-path{from{transform:translateX(${f1(-moonDrift)}px) scale(0.94,0.98);opacity:0.72}to{transform:translateX(${f1(moonDrift)}px) scale(1.08,1.03);opacity:1}}
 @keyframes paddle{from{transform:rotate(14deg)}to{transform:rotate(-14deg)}}
-@keyframes ca{from{transform:translate(-26px,0)}to{transform:translate(26px,9px)}}
+@keyframes ca{from{transform:translate(${f1(causticFromX)}px,0)}to{transform:translate(${f1(causticToX)}px,9px)}}
 @keyframes floor{0%,100%{transform:translate(${f1(shadowShiftX - shadowDrift)}px,${f1(shadowShiftY - 0.6)}px) scale(${(shadowStretch * 0.99).toFixed(3)},0.99)}50%{transform:translate(${f1(shadowShiftX + shadowDrift)}px,${f1(shadowShiftY + 0.6)}px) scale(${(shadowStretch * 1.01).toFixed(3)},1.01)}}
-@keyframes current{from{transform:translateX(-22px);opacity:${currentFloor.toFixed(3)}}to{transform:translateX(24px);opacity:${currentPeak.toFixed(3)}}}
-@keyframes mo{0%{transform:translate(0,0);opacity:0}15%{opacity:0.55}85%{opacity:0.4}100%{transform:translate(14px,-26px);opacity:0}}
+@keyframes current{from{transform:translateX(${f1(currentFromX)}px);opacity:${currentFloor.toFixed(3)}}to{transform:translateX(${f1(currentToX)}px);opacity:${currentPeak.toFixed(3)}}}
+@keyframes mo{0%{transform:translate(0,0);opacity:0}15%{opacity:0.55}85%{opacity:0.4}100%{transform:translate(${f1(moteDriftX)}px,-26px);opacity:0}}
 @keyframes ar{0%{transform:scale(0.2);opacity:0}6%{opacity:0.22}26%,100%{transform:scale(3.6);opacity:0}}
 @keyframes maple{0%{transform:translate(var(--mx0),0) rotate(0);opacity:0}6%{opacity:0.95}28%{transform:translate(var(--mx1),var(--my1)) rotate(95deg);opacity:0.95}63%{transform:translate(var(--mx2),var(--my2)) rotate(210deg);opacity:0.95}94%{opacity:0.9}100%{transform:translate(var(--mx3),var(--my3)) rotate(330deg);opacity:0}}
 @keyframes maple-body{from{transform:translateY(-1px) rotate(-4deg)}to{transform:translateY(1px) rotate(4deg)}}
@@ -608,6 +626,11 @@ ${turtleScene.css}
     `<stop offset="0.5" stop-color="${theme.sheen}" stop-opacity="0.28"/>` +
     `<stop offset="1" stop-color="${theme.sheen}" stop-opacity="0"/>` +
     `</radialGradient>` +
+    `<radialGradient id="moonPathG" cx="0.5" cy="0.5" r="0.5">` +
+    `<stop offset="0" stop-color="#e9f8ff" stop-opacity="0.92"/>` +
+    `<stop offset="0.42" stop-color="#c7eafa" stop-opacity="0.36"/>` +
+    `<stop offset="1" stop-color="#9dd2e8" stop-opacity="0"/>` +
+    `</radialGradient>` +
     `<radialGradient id="vig" cx="0.5" cy="0.5" r="0.72">` +
     `<stop offset="0.55" stop-color="rgba(0,0,0,0)"/><stop offset="1" stop-color="${theme.vignette}"/>` +
     `</radialGradient>` +
@@ -619,6 +642,7 @@ ${turtleScene.css}
     `<rect width="${width}" height="${LAYOUT.height}" rx="10" fill="url(#water)"/>` +
     floorBlotches(width, r, floorOpacityScale) +
     directionalWaterLight(width, environment?.sunDirection ?? 0, directionalLightIntensity) +
+    moonWaterLight(width, environment?.moonDirection ?? 0, environment?.moonStrength ?? 0) +
     waterCurrents(width, theme, r) +
     deepShade(width, theme) +
     caustics(width, theme) +
@@ -634,7 +658,14 @@ ${turtleScene.css}
       ? `<g opacity="${lotusPresence.toFixed(3)}">${lotus(lotusX, theme, r, environment?.lotusOpenness ?? 1)}</g>`
       : '') +
     plan.fishes.map(f => `<g>${fishSVG(f, theme, staticTime, timelineDuration)}</g>`).join('') +
-    autumnMapleLeaves(width, theme, seed, environment?.mapleDrift ?? 0) +
+    autumnMapleLeaves(
+      width,
+      theme,
+      seed,
+      environment?.mapleDrift ?? 0,
+      environment?.currentDirection ?? 1,
+      environment?.currentStrength ?? 0.5,
+    ) +
     winterIce(width, theme, seed, environment?.iceCoverage ?? 0, hasTurtle) +
     (hasTurtle ? turtleScene.effects + turtle(theme) : '') +
     ambientRipples(width, theme, r, ambientRippleCount) +

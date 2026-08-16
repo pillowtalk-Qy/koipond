@@ -48,4 +48,24 @@ describe('pond environment', () => {
     expect(morning.goldenLight).toBeGreaterThan(noon.goldenLight)
     expect(afternoon.goldenLight).toBeGreaterThan(noon.goldenLight)
   })
+
+  it('derives a reproducible lunar cycle without an external service', () => {
+    const newMoon = deriveEnvironment(momentFromText('2000-01-06', '18:14', 0, 0, 0))
+    const fullMoon = deriveEnvironment(momentFromText('2000-01-21', '00:00', 0, 0, 0))
+    expect(Math.min(newMoon.moonPhase, 1 - newMoon.moonPhase)).toBeLessThan(0.002)
+    expect(newMoon.moonIllumination).toBeLessThan(0.001)
+    expect(fullMoon.moonIllumination).toBeGreaterThan(0.99)
+    expect(fullMoon.moonStrength).toBeGreaterThan(0.95)
+  })
+
+  it('changes a continuous pond current over time and location', () => {
+    const first = deriveEnvironment(momentFromText('2026-08-16', '00:00', 0, 0, 0))
+    const oneMinuteLater = deriveEnvironment(momentFromText('2026-08-16', '00:01', 0, 0, 0))
+    const reversed = deriveEnvironment(momentFromText('2026-08-22', '00:00', 0, 0, 0))
+    expect(first.currentDirection).toBeGreaterThan(0)
+    expect(reversed.currentDirection).toBeLessThan(0)
+    expect(Math.abs(first.currentDirection - oneMinuteLater.currentDirection)).toBeLessThan(0.01)
+    expect(first.currentStrength).toBeGreaterThanOrEqual(0.32)
+    expect(first.currentStrength).toBeLessThanOrEqual(1)
+  })
 })

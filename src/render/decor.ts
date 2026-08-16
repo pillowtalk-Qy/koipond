@@ -104,6 +104,30 @@ export function directionalWaterLight(
   )
 }
 
+/** Moonlight is visible as broken water reflections, never as a literal sky object. */
+export function moonWaterLight(
+  width: number,
+  moonDirection: number,
+  strength: number,
+): string {
+  if (strength < 0.015) return ''
+  const centerX = width * (0.5 + moonDirection * 0.24)
+  const centerY = LAYOUT.height * 0.35
+  const rotation = moonDirection * -5
+  const rx = width * (0.045 + strength * 0.045)
+  const ry = 10 + strength * 15
+  const opacity = Math.min(0.23, 0.035 + strength * 0.195)
+  return (
+    `<g data-pond-part="moon-light" data-moon-strength="${strength.toFixed(3)}" opacity="${f1(opacity)}">` +
+    `<ellipse class="moon-path moon-path-a" cx="${f1(centerX)}" cy="${f1(centerY)}" ` +
+    `rx="${f1(rx)}" ry="${f1(ry)}" transform="rotate(${f1(rotation)} ${f1(centerX)} ${f1(centerY)})" ` +
+    `fill="url(#moonPathG)" filter="url(#soft)"/>` +
+    `<ellipse class="moon-path moon-path-b" cx="${f1(centerX - moonDirection * 5)}" cy="${f1(centerY + 24)}" ` +
+    `rx="${f1(rx * 0.64)}" ry="${f1(ry * 0.5)}" fill="url(#moonPathG)" filter="url(#soft)"/>` +
+    `</g>`
+  )
+}
+
 /** Bright band along the top edge so the water reads as a surface seen from above. */
 export function surfaceSheen(width: number, theme: Theme, intensity = 1): string {
   return (
@@ -229,7 +253,14 @@ export function summerBlooms(
 const MAPLE_PATH =
   'M0 -7 L1.5 -3.2 L4.8 -5 L3.5 -1.2 L7 -0.4 L3.4 1.3 L4.5 5 L1.1 3.2 L0 7 L-1.1 3.2 L-4.5 5 L-3.4 1.3 L-7 -0.4 L-3.5 -1.2 L-4.8 -5 L-1.5 -3.2 Z'
 
-export function autumnMapleLeaves(width: number, theme: Theme, seed: string, intensity: number): string {
+export function autumnMapleLeaves(
+  width: number,
+  theme: Theme,
+  seed: string,
+  intensity: number,
+  currentDirection = 1,
+  currentStrength = 0.5,
+): string {
   if (intensity < 0.08) return ''
   const r = rng(`maple:${seed}`)
   const colors = theme.key === 'dark'
@@ -241,10 +272,13 @@ export function autumnMapleLeaves(width: number, theme: Theme, seed: string, int
     const y = 24 + r() * (LAYOUT.height - 52)
     const rotation = r() * 360
     const scale = 0.65 + r() * 0.45
-    const duration = 34 + r() * 24
+    const direction = currentDirection < 0 ? -1 : 1
+    const duration = (34 + r() * 24) / (0.72 + currentStrength * 0.48)
     const delay = r() * duration
-    const startX = -x - 24 - r() * 32
-    const endX = width - x + 24 + r() * 32
+    const leftEdge = -x - 24 - r() * 32
+    const rightEdge = width - x + 24 + r() * 32
+    const startX = direction > 0 ? leftEdge : rightEdge
+    const endX = direction > 0 ? rightEdge : leftEdge
     const distance = endX - startX
     const y1 = (r() - 0.5) * 20
     const y2 = (r() - 0.5) * 28

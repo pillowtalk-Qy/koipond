@@ -27,6 +27,13 @@ export interface PondEnvironment {
   twilight: number
   goldenLight: number
   nightDepth: number
+  moonPhase: number
+  moonIllumination: number
+  moonAltitude: number
+  moonDirection: number
+  moonStrength: number
+  currentDirection: number
+  currentStrength: number
   phase: DayPhase
   season: PondSeason
   seasonWeights: Record<PondSeason, number>
@@ -43,6 +50,9 @@ export interface PondEnvironment {
 }
 
 const DAY_MS = 86_400_000
+const JULIAN_UNIX_EPOCH = 2_440_587.5
+const KNOWN_NEW_MOON_JD = 2_451_550.25972
+const SYNODIC_MONTH_DAYS = 29.53058867
 const SEASONS: PondSeason[] = ['spring', 'summer', 'autumn', 'winter']
 const SEASON_CENTERS: Record<PondSeason, number> = {
   spring: 0.285,
@@ -61,6 +71,10 @@ const circularDistance = (left: number, right: number) => {
   const distance = Math.abs(left - right) % 1
   return Math.min(distance, 1 - distance)
 }
+
+const positiveModulo = (value: number, divisor: number) => ((value % divisor) + divisor) % divisor
+
+const signedCircularMinutes = (value: number) => positiveModulo(value + 720, 1440) - 720
 
 const daysInYear = (year: number) => (Date.UTC(year + 1, 0, 1) - Date.UTC(year, 0, 1)) / DAY_MS
 
@@ -159,6 +173,27 @@ export function deriveEnvironment(moment: PondMoment, seasonOverride?: PondSeaso
   const twilight = smoothstep(-18, -4, solarAltitude) * (1 - smoothstep(-4, 8, solarAltitude))
   const goldenLight = smoothstep(-8, 5, solarAltitude) * (1 - smoothstep(12, 44, solarAltitude))
   const nightDepth = 1 - smoothstep(-24, -8, solarAltitude)
+  const utcTimestamp =
+    Date.UTC(moment.year, moment.month - 1, moment.day) -
+    moment.timezoneOffsetMinutes * 60_000 +
+    moment.minuteOfDay * 60_000
+  const julianDay = utcTimestamp / DAY_MS + JULIAN_UNIX_EPOCH
+  const moonPhase = positiveModulo((julianDay - KNOWN_NEW_MOON_JD) / SYNODIC_MONTH_DAYS, 1)
+  const moonIllumination = (1 - Math.cos(moonPhase * Math.PI * 2)) / 2
+  const moonTransitMinute = positiveModulo(720 + moonPhase * 1440, 1440)
+  const moonMinuteFromTransit = signedCircularMinutes(moment.minuteOfDay - moonTransitMinute)
+  const moonAltitude = Math.cos((moonMinuteFromTransit / 720) * Math.PI)
+  const moonDirection = clamp(moonMinuteFromTransit / 360, -1, 1)
+  const moonStrength = moonIllumination * smoothstep(-0.08, 0.42, moonAltitude) * nightDepth
+  const continuousDay = (utcTimestamp - Date.UTC(2000, 0, 1)) / DAY_MS
+  const longitudePhase = (moment.longitude * Math.PI) / 180
+  const latitudePhase = (moment.latitude * Math.PI) / 180
+  const currentDirection = Math.sin(
+    (continuousDay * Math.PI * 2) / 11.7 + longitudePhase * 0.6 + latitudePhase * 0.4,
+  )
+  const currentStrength = 0.32 + 0.68 * (
+    0.5 + 0.5 * Math.sin((continuousDay * Math.PI * 2) / 6.3 + longitudePhase * 1.3 - latitudePhase * 0.5)
+  )
   const lotusOpenness = 0.12 + smoothstep(-3, 20, solarAltitude) * 0.88
   const weights = seasonWeights(yearProgress, moment.latitude, seasonOverride)
   const season = SEASONS.reduce((best, candidate) => weights[candidate] > weights[best] ? candidate : best, 'spring')
@@ -188,6 +223,13 @@ export function deriveEnvironment(moment: PondMoment, seasonOverride?: PondSeaso
     twilight: f3(twilight),
     goldenLight: f3(goldenLight),
     nightDepth: f3(nightDepth),
+    moonPhase: f3(moonPhase),
+    moonIllumination: f3(moonIllumination),
+    moonAltitude: f3(moonAltitude),
+    moonDirection: f3(moonDirection),
+    moonStrength: f3(moonStrength),
+    currentDirection: f3(currentDirection),
+    currentStrength: f3(currentStrength),
     phase,
     season,
     seasonWeights: Object.fromEntries(SEASONS.map(key => [key, f3(weights[key])])) as Record<PondSeason, number>,

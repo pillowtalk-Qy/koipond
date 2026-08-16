@@ -44,4 +44,17 @@ describe('environment palette', () => {
     expect(new Set(themes.map(theme => theme.plankton[3])).size).toBe(4)
     expect(new Set(themes.map(theme => theme.nightTint)).size).toBe(4)
   })
+
+  it('lets lunar illumination alter the night palette without changing its season', () => {
+    const darkMoon = deriveEnvironment(momentFromText('2026-08-16', '00:00', 0, 0, 0), 'summer')
+    const fullMoon = deriveEnvironment(momentFromText('2026-08-28', '00:00', 0, 0, 0), 'summer')
+    const darkTheme = themeForEnvironment(darkMoon)
+    const fullTheme = themeForEnvironment(fullMoon)
+
+    expect(darkMoon.moonStrength).toBeLessThan(0.01)
+    expect(fullMoon.moonStrength).toBeGreaterThan(0.98)
+    expect(fullTheme.waterTop).not.toBe(darkTheme.waterTop)
+    expect(fullTheme.sheen).not.toBe(darkTheme.sheen)
+    expect(fullTheme.night).toBeLessThan(darkTheme.night)
+  })
 })
