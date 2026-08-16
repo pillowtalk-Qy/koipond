@@ -226,7 +226,29 @@
     padding: 4px 9px;
   }
   .season-jump:hover:not(:disabled) { transform: none; box-shadow: none; color: var(--ink); }
-  .season-jump.on { background: rgba(34, 211, 238, 0.14); color: var(--accent); }
+  .season-jump.on, .phase-jump.on { background: rgba(34, 211, 238, 0.14); color: var(--accent); }
+  #phase-jumps {
+    display: inline-flex;
+    gap: 3px;
+    align-items: center;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 3px;
+  }
+  .phase-jump {
+    width: 26px;
+    height: 24px;
+    padding: 0;
+    display: inline-grid;
+    place-items: center;
+    background: transparent;
+    border: 0;
+    border-radius: 999px;
+    box-shadow: none;
+    color: var(--muted);
+    font: 14px/1 var(--sans);
+  }
+  .phase-jump:hover:not(:disabled) { transform: none; box-shadow: none; color: var(--ink); }
   .fixed-environment #environment-controls { opacity: 0.42; pointer-events: none; }
 
   #pond {
@@ -359,6 +381,10 @@
         <button type="button" class="season-jump" data-season="summer" data-month-day="07-15">summer</button>
         <button type="button" class="season-jump" data-season="autumn" data-month-day="10-15">autumn</button>
         <button type="button" class="season-jump" data-season="winter" data-month-day="01-15">winter</button>
+      </div>
+      <div id="phase-jumps" aria-label="Day and night previews">
+        <button type="button" class="phase-jump" data-phase="day" data-time="12:00" title="Preview daytime" aria-label="Preview daytime">☀</button>
+        <button type="button" class="phase-jump" data-phase="night" data-time="23:00" title="Preview nighttime" aria-label="Preview nighttime">☾</button>
       </div>
       <span id="moment-label" aria-live="polite"></span>
     </div>

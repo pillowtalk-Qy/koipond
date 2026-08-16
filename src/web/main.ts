@@ -38,7 +38,7 @@ jobs:
   generate:
     runs-on: ubuntu-latest
     steps:
-      - uses: pillowtalk-Qy/koipond@281965d0e218900149d0f72a25b8457c24a0ea27
+      - uses: pillowtalk-Qy/koipond@ff388c7ccaa5eef9da8e375f9c6362083668a4b9
         with:
           github_user_name: ${'$'}{{ github.repository_owner }}
           outputs: |
@@ -87,6 +87,17 @@ let currentUser = ''
 
 const pad = (value: number) => String(value).padStart(2, '0')
 
+function syncURL() {
+  const params = new URLSearchParams()
+  const user = currentUser || input.value.trim()
+  if (user) params.set('user', user)
+  if (!live.checked) {
+    params.set('date', date.value)
+    params.set('time', time.value)
+  }
+  history.replaceState(null, '', params.size > 0 ? `?${params}` : location.pathname)
+}
+
 function updateLiveInputs() {
   const moment = momentAtTimezone(new Date())
   date.value = `${moment.year}-${pad(moment.month)}-${pad(moment.day)}`
@@ -113,6 +124,9 @@ function renderAuto() {
   momentLabel.textContent = `${environment.date} · ${clock} HKT · ${environment.season} · ${environment.phase}`
   for (const button of document.querySelectorAll<HTMLButtonElement>('.season-jump')) {
     button.classList.toggle('on', button.dataset.season === environment.season)
+  }
+  for (const button of document.querySelectorAll<HTMLButtonElement>('.phase-jump')) {
+    button.classList.toggle('on', button.dataset.phase === environment.phase)
   }
 }
 
@@ -150,7 +164,7 @@ async function generate(user: string) {
     result.hidden = false
     show(active)
     fillInstall(user)
-    history.replaceState(null, '', `?user=${encodeURIComponent(user)}`)
+    syncURL()
   } catch (err) {
     status.textContent = err instanceof Error ? err.message : String(err)
   } finally {
@@ -182,12 +196,14 @@ tabs.addEventListener('click', e => {
 live.addEventListener('change', () => {
   if (live.checked) updateLiveInputs()
   if (active === 'auto') show('auto')
+  syncURL()
 })
 
 for (const control of [date, time]) {
   control.addEventListener('input', () => {
     live.checked = false
     if (active === 'auto') show('auto')
+    syncURL()
   })
 }
 
@@ -195,9 +211,18 @@ document.querySelectorAll<HTMLButtonElement>('.season-jump').forEach(button => {
   button.addEventListener('click', () => {
     const year = date.value.slice(0, 4) || String(momentAtTimezone(new Date()).year)
     date.value = `${year}-${button.dataset.monthDay}`
-    time.value = '12:00'
     live.checked = false
     show('auto')
+    syncURL()
+  })
+})
+
+document.querySelectorAll<HTMLButtonElement>('.phase-jump').forEach(button => {
+  button.addEventListener('click', () => {
+    time.value = button.dataset.time ?? time.value
+    live.checked = false
+    show('auto')
+    syncURL()
   })
 })
 
@@ -210,8 +235,14 @@ copy.addEventListener('click', () => {
   })
 })
 
-const preset = new URLSearchParams(location.search).get('user')
+const initialParams = new URLSearchParams(location.search)
+const preset = initialParams.get('user')
 updateLiveInputs()
+const presetDate = initialParams.get('date')
+const presetTime = initialParams.get('time')
+if (presetDate && /^\d{4}-\d{2}-\d{2}$/.test(presetDate)) date.value = presetDate
+if (presetTime && /^\d{2}:\d{2}$/.test(presetTime)) time.value = presetTime
+if (presetDate || presetTime) live.checked = false
 setInterval(() => {
   if (live.checked && active === 'auto' && currentGrid) show('auto')
 }, 60_000)
