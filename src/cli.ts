@@ -1,11 +1,12 @@
-import { mkdirSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
 import { parseArgs } from 'node:util'
 import { demoGrid } from './demo'
 import { fetchGrid, fetchGridPublic } from './github'
 import { plan } from './planner'
 import { THEMES } from './render/palette'
 import { renderSVG } from './render/svg'
+import { finalizePondState, highlightedCells, preparePondState, provenanceFor, serializePondState } from './state'
 import { parseVideoQuery, renderVideo } from './video'
 import type { Grid } from './types'
 
@@ -18,6 +19,7 @@ const { values } = parseArgs({
     theme: { type: 'string', default: 'both' },
     out: { type: 'string', default: 'dist' },
     video: { type: 'string' },
+    state: { type: 'string' },
   },
 })
 
@@ -46,7 +48,19 @@ if (values.demo) {
 }
 
 const themes = values.theme === 'both' ? (['light', 'dark'] as const) : ([values.theme] as ('light' | 'dark')[])
-const p = plan(grid, seed)
+let previousState: unknown = null
+if (values.state && existsSync(values.state)) {
+  try {
+    previousState = JSON.parse(readFileSync(values.state, 'utf8'))
+  } catch {
+    console.warn(`Ignoring invalid pond state: ${values.state}`)
+  }
+}
+const owner = values.user ?? 'koipond-demo'
+const preparedState = values.state ? preparePondState(grid, owner, seed, previousState) : null
+const feedingPlan = plan(grid, seed, preparedState?.identities)
+const nextState = preparedState ? finalizePondState(preparedState, feedingPlan) : null
+const p = nextState ? plan(grid, seed, nextState.fish) : feedingPlan
 
 mkdirSync(values.out, { recursive: true })
 const outputs: Record<string, string> = {}
@@ -56,7 +70,10 @@ for (const key of themes) {
     console.error(`Unknown theme: ${key} (expected light | dark | both)`)
     process.exit(1)
   }
-  const { svg, meta } = renderSVG(grid, p, theme, seed)
+  const context = nextState
+    ? { provenance: provenanceFor(nextState), highlightedCells: highlightedCells(grid, nextState) }
+    : undefined
+  const { svg, meta } = renderSVG(grid, p, theme, seed, context)
   const file = join(values.out, `koipond-${key}.svg`)
   writeFileSync(file, svg)
   outputs[key] = svg
@@ -71,6 +88,15 @@ if (values.video) {
   const key = file.includes('dark') && outputs.dark ? 'dark' : themes[0]
   await renderVideo(outputs[key], file, p.duration, parseVideoQuery(query))
   console.log(`${file}  rendered from the ${key} theme`)
+}
+
+if (values.state && nextState) {
+  mkdirSync(dirname(values.state) || '.', { recursive: true })
+  writeFileSync(values.state, serializePondState(nextState))
+  console.log(
+    `${values.state}  pond revision ${nextState.revision}, ${nextState.fish.length} persistent fish, ` +
+      `sha256:${nextState.proof.digest.slice(0, 12)}`,
+  )
 }
 
 if (outputs.light && outputs.dark) {

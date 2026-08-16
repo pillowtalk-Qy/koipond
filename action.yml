@@ -20,11 +20,23 @@ inputs:
     description: "Token used to read the contribution calendar (falls back to public data when empty)"
     required: false
     default: ${{ github.token }}
+  state_file:
+    description: "Local state artifact. Publish it with the SVGs to preserve fish identity and growth"
+    required: false
+    default: "dist/pond-state.json"
+  state_branch:
+    description: "Branch that contains the previously published state artifact"
+    required: false
+    default: "output"
+  state_path:
+    description: "Path to the state artifact inside the published branch"
+    required: false
+    default: "pond-state.json"
 
 runs:
   using: composite
   steps:
-    - uses: actions/setup-node@v4
+    - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
       with:
         node-version: 22
     - run: npm ci --omit=dev --prefix "$GITHUB_ACTION_PATH"
@@ -35,3 +47,6 @@ runs:
         KOIPOND_USER: ${{ inputs.github_user_name }}
         KOIPOND_TOKEN: ${{ inputs.github_token }}
         KOIPOND_OUTPUTS: ${{ inputs.outputs }}
+        KOIPOND_STATE_FILE: ${{ inputs.state_file }}
+        KOIPOND_STATE_BRANCH: ${{ inputs.state_branch }}
+        KOIPOND_STATE_PATH: ${{ inputs.state_path }}

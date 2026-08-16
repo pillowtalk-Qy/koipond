@@ -20,7 +20,7 @@ const repoLink = $<HTMLAnchorElement>('repo-link')
 const snippet = $<HTMLElement>('snippet')
 const copy = $<HTMLButtonElement>('copy')
 
-const WORKFLOW = `name: koipond
+const workflowFor = (user: string) => `name: koipond
 on:
   schedule:
     - cron: "0 3 * * *"
@@ -33,13 +33,13 @@ jobs:
   generate:
     runs-on: ubuntu-latest
     steps:
-      - uses: 0xydev/koipond@v1
+      - uses: ${user}/koipond@original-plus
         with:
           github_user_name: ${'$'}{{ github.repository_owner }}
           outputs: |
             dist/koipond-light.svg
             dist/koipond-dark.svg?theme=dark
-      - uses: crazy-max/ghaction-github-pages@v4
+      - uses: crazy-max/ghaction-github-pages@df5cc2bfa78282ded844b354faee141f06b41865 # v4
         with:
           target_branch: output
           build_dir: dist
@@ -50,12 +50,14 @@ jobs:
 const snippetFor = (user: string) => `<picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/${user}/${user}/output/koipond-dark.svg">
   <img alt="koipond" src="https://raw.githubusercontent.com/${user}/${user}/output/koipond-light.svg">
-</picture>`
+</picture>
+<br>
+<sub>Contributions feed this pond. Its fish remember. · <a href="https://raw.githubusercontent.com/${user}/${user}/output/pond-state.json">verify state</a></sub>`
 
 function fillInstall(user: string) {
   const params = new URLSearchParams({
     filename: '.github/workflows/koipond.yml',
-    value: WORKFLOW,
+    value: workflowFor(user),
   })
   installLink.href = `https://github.com/${user}/${user}/new/main?${params}`
   installNote.textContent = `opens ${user}/${user} prefilled, just press commit`

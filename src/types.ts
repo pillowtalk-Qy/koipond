@@ -18,22 +18,36 @@ export interface Point {
 
 export interface Waypoint extends Point {
   t: number
+  satiety: number
 }
 
 export type Species = 'koi' | 'minnow'
 
+export interface FishIdentity {
+  key: string
+  species: Species
+  baseSize: number
+  lifetimeEnergy: number
+  bornOn: string
+}
+
 export interface FishPlan {
   id: number
+  key: string
   species: Species
   size: number
+  energy: number
+  lifetimeEnergy: number
   start: Point
   waypoints: Waypoint[]
 }
 
 export interface EatEvent {
   cell: number
+  fish: number
   t: number
   level: number
+  energy: number
   x: number
   y: number
 }

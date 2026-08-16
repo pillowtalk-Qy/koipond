@@ -27,10 +27,26 @@ the water.
 
 The graph does not just feed the fish, it shapes the ecosystem:
 
-- **Fish count and species** (koi vs minnows) scale with your total contributions.
+- **Fish count, species and size** respond to active days, contribution energy and consistency.
+- **Contribution levels carry energy**: richer plankton changes target choice, swimming pace and satiety.
+- **Fish persist between days**: identity, markings and earned growth survive each nightly refresh.
+- **Koi and minnows behave differently**: koi favor high-energy food while minnows favor dense grazing areas.
+- **The pond has physical relationships**: fish separate from one another, minnows school and all fish avoid lily pads.
 - **A 30+ day streak** earns a pond turtle paddling across. 🐢
 - **A 21+ day quiet stretch** makes a lotus bloom over its center. 🪷
 - **Dark mode is bioluminescent**: an abyssal pond, twinkling plankton, glowing spirit koi.
+
+This `original-plus` branch deliberately keeps the original composition and art direction. Its changes
+are behavioral: the same contribution graph now produces a more causal ecosystem instead of adding
+new panels, labels or decorative species. Viewers who prefer reduced motion receive a complete still
+pond with the fish placed along their real paths.
+
+The published `pond-state.json` is intentionally small and auditable. It contains the public daily
+contribution levels, deterministic fish identities and cumulative feeding energy. It never stores
+repository names, commit messages, private counts or visitor data. A repeated run over the same
+calendar cannot feed the fish twice; only newly visible energy changes the state. Every revision
+contains SHA-256 digests of its source calendar, complete state and preceding revision. The same
+provenance is embedded in the SVG's `<metadata>` element.
 
 Everything is baked into a self-contained animated SVG (CSS keyframes, no JavaScript), so it works
 anywhere GitHub renders images, including profile READMEs.
@@ -61,13 +77,13 @@ jobs:
   generate:
     runs-on: ubuntu-latest
     steps:
-      - uses: 0xydev/koipond@v1
+      - uses: <user>/koipond@original-plus
         with:
           github_user_name: ${{ github.repository_owner }}
           outputs: |
             dist/koipond-light.svg
             dist/koipond-dark.svg?theme=dark
-      - uses: crazy-max/ghaction-github-pages@v4
+      - uses: crazy-max/ghaction-github-pages@df5cc2bfa78282ded844b354faee141f06b41865 # v4
         with:
           target_branch: output
           build_dir: dist
@@ -82,6 +98,8 @@ Then embed the generated files in your README so the theme follows the viewer:
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/<user>/<repo>/output/koipond-dark.svg">
   <img alt="koipond" src="https://raw.githubusercontent.com/<user>/<repo>/output/koipond-light.svg">
 </picture>
+<br>
+<sub>Contributions feed this pond. Its fish remember. · <a href="https://raw.githubusercontent.com/<user>/<repo>/output/pond-state.json">verify state</a></sub>
 ```
 
 Each `outputs` line accepts options as a query string, and can be a `.svg`, `.gif` or `.mp4`:
@@ -101,6 +119,13 @@ outputs: |
 | `start` | Capture start time in seconds into the loop (default 0) |
 | `dur` | Capture length in seconds (default: the full loop) |
 | `scale` | Resolution multiplier (default 1 for gif, 2 for mp4) |
+
+The Action also writes `dist/pond-state.json`. Because the workflow publishes the complete `dist`
+directory to `output`, the next nightly run restores it automatically. The optional Action inputs
+`state_file`, `state_branch` and `state_path` change those locations.
+
+The workflow above assumes this `original-plus` source has been published to `<user>/koipond`.
+Pin the `uses:` line to a full commit SHA after publishing it for the strongest supply-chain guarantee.
 
 GIF and MP4 outputs use a headless Chromium browser and ffmpeg. Both are preinstalled on GitHub
 runners, so they just work in the Action. Locally you need Chrome or Edge plus ffmpeg on PATH.
@@ -128,6 +153,24 @@ With a token you get exact contribution counts instead of levels:
 npx tsx src/cli.ts --user <login> --token <token>
 ```
 
+Preserve fish identity and growth across local runs:
+
+```sh
+npx tsx src/cli.ts --user <login> --state dist/pond-state.json
+```
+
+Verify a downloaded state independently:
+
+```sh
+npm run verify:state -- dist/pond-state.json
+```
+
+To verify one revision links to an earlier state retrieved from Git history:
+
+```sh
+npm run verify:state -- pond-state.json previous-pond-state.json
+```
+
 | Flag | Meaning |
 | --- | --- |
 | `--user` | GitHub login to fetch the contribution calendar for |
@@ -137,22 +180,33 @@ npx tsx src/cli.ts --user <login> --token <token>
 | `--theme` | `light`, `dark` or `both` (default `both`) |
 | `--out` | Output directory (default `dist`) |
 | `--video` | Also render a `.gif` or `.mp4` of the loop, with the same query options (`pond.mp4?fps=60`) |
+| `--state` | Read and update a persistent pond-state JSON file (optional) |
 
 ## How it works
 
 1. **Data**: GitHub GraphQL `contributionCalendar`, the public contributions page (no token), or a
    deterministic demo generator.
-2. **Planner** (`src/planner.ts`): a seeded steering-physics simulation. Fish accelerate under a
-   capped force toward their next plankton, slow into the pickup, weave under a wander force and
-   bounce softly off the walls. Deterministic, so the same grid + seed always bakes the same film.
-3. **Renderer** (`src/render/svg.ts`): bakes the simulated paths into CSS `@keyframes` (decimated on
+2. **State** (`src/state.ts`): compares the public calendar with the previous published snapshot,
+   preserves fish identity and credits only new energy. Canonical JSON and SHA-256 bind the source
+   calendar, complete state and previous revision into an independently verifiable chain.
+3. **Ecology** (`src/ecology.ts`): contribution levels become conserved energy, activity patterns
+   become stable ecosystem traits, and lily-pad geometry is shared by rendering and path planning.
+4. **Planner** (`src/planner.ts`): a seeded steering-physics simulation. Fish accelerate under a
+   capped force toward their next plankton, change pace with satiety, separate, school, avoid pond
+   obstacles and bounce softly off the walls. Deterministic, so the same grid + seed always bakes
+   the same film.
+5. **Renderer** (`src/render/svg.ts`): bakes the simulated paths into CSS `@keyframes` (decimated on
    straightaways), draws bodies as delayed trails, and quantizes eat times into 0.5% buckets so
    hundreds of plankton share ~100 keyframe blocks, keeping file size down.
 
 ## Roadmap
 
 - [x] Steering-physics fish over the contribution field, light and dark themes
-- [x] GitHub Action packaging (`uses: 0xydev/koipond@v1`) with query-string options
+- [x] Energy, satiety, schooling, separation and lily-pad avoidance
+- [x] Accessible static pond for reduced-motion visitors
+- [x] Cross-day fish identity, growth and replay-safe feeding state
+- [x] SHA-256 state provenance, SVG metadata and standalone verification
+- [x] GitHub Action packaging with persistent state and query-string options
 - [x] GIF and MP4 output (headless browser capture)
 - [ ] More species, decor unlocked by achievements, GitLab support
 

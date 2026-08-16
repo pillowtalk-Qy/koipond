@@ -39,7 +39,39 @@ export interface Day {
   level: Cell['level']
 }
 
+const retryableStatus = (status: number) => status === 429 || status >= 500
+
+export async function fetchWithRetry(input: string | URL, init?: RequestInit, attempts = 3): Promise<Response> {
+  let lastError: unknown
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    try {
+      const response = await fetch(input, init)
+      if (!retryableStatus(response.status) || attempt === attempts - 1) return response
+      await response.body?.cancel()
+    } catch (error) {
+      lastError = error
+      if (attempt === attempts - 1) throw error
+    }
+    await new Promise(resolve => setTimeout(resolve, 250 * (attempt + 1)))
+  }
+  throw lastError instanceof Error ? lastError : new Error('GitHub request failed')
+}
+
+export function parsePublicContributionDays(html: string): Day[] {
+  const days: Day[] = []
+  for (const match of html.matchAll(/<td\b[^>]*>/g)) {
+    const tag = match[0]
+    const date = /\bdata-date="(\d{4}-\d{2}-\d{2})"/.exec(tag)?.[1]
+    const level = /\bdata-level="([0-4])"/.exec(tag)?.[1]
+    if (!date || level === undefined) continue
+    const parsed = Number(level) as Cell['level']
+    days.push({ date, count: parsed, level: parsed })
+  }
+  return days
+}
+
 export function gridFromDays(days: Day[]): Grid {
+  if (days.length === 0) throw new Error('Cannot build a contribution grid without days')
   const sorted = [...days].sort((a, b) => a.date.localeCompare(b.date))
   const origin = new Date(sorted[0].date)
   const originSunday = origin.getTime() - origin.getUTCDay() * DAY_MS
@@ -52,7 +84,7 @@ export function gridFromDays(days: Day[]): Grid {
 }
 
 export async function fetchGrid(login: string, token: string): Promise<Grid> {
-  const res = await fetch('https://api.github.com/graphql', {
+  const res = await fetchWithRetry('https://api.github.com/graphql', {
     method: 'POST',
     headers: {
       authorization: `bearer ${token}`,
@@ -86,20 +118,13 @@ export async function fetchGrid(login: string, token: string): Promise<Grid> {
 }
 
 export async function fetchGridPublic(login: string): Promise<Grid> {
-  const res = await fetch(`https://github.com/users/${login}/contributions`, {
+  const res = await fetchWithRetry(`https://github.com/users/${login}/contributions`, {
     headers: { 'user-agent': 'koipond' },
   })
   if (!res.ok) throw new Error(`GitHub responded ${res.status} for ${login}'s contribution page`)
   const html = await res.text()
 
-  const days: Day[] = []
-  for (const m of html.matchAll(/<td[^>]+data-date="(\d{4}-\d{2}-\d{2})"[^>]*>/g)) {
-    const level = /data-level="(\d)"/.exec(m[0])?.[1]
-    if (level !== undefined) {
-      const lv = Number(level) as Cell['level']
-      days.push({ date: m[1], count: lv, level: lv })
-    }
-  }
+  const days = parsePublicContributionDays(html)
   if (days.length === 0) throw new Error(`No contribution cells found for ${login} (user missing or GitHub markup changed)`)
   return gridFromDays(days)
 }

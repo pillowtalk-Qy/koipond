@@ -1,6 +1,8 @@
 import { LAYOUT, cellCenter, svgWidth } from '../layout'
+import { lilyPadLayout } from '../ecology'
 import { longestGap, longestStreak } from '../planner'
 import { rng } from '../prng'
+import type { PondProvenance } from '../state'
 import type { Grid, Plan, Waypoint } from '../types'
 import {
   SOFT_FILTER,
@@ -15,8 +17,9 @@ import {
   pebbles,
   surfaceSheen,
   turtle,
+  waterCurrents,
 } from './decor'
-import { fishSVG } from './fish'
+import { fishPointAt, fishStaticTrail, fishSVG } from './fish'
 import type { Theme } from './palette'
 
 const PLANKTON_R = [0, 2.1, 2.8, 3.5, 4.2]
@@ -32,6 +35,11 @@ export interface RenderMeta {
   bytes: number
 }
 
+export interface RenderContext {
+  provenance?: PondProvenance
+  highlightedCells?: ReadonlySet<number>
+}
+
 const pct = (t: number, duration: number) => ((t / duration) * 100).toFixed(2)
 
 const bucketOf = (t: number, duration: number) => {
@@ -40,7 +48,7 @@ const bucketOf = (t: number, duration: number) => {
 }
 const bucketId = (b: number) => b.toFixed(1).replace('.', '_')
 
-function fishKeyframes(plan: Plan): string {
+function fishKeyframes(plan: Plan, highlightedCells?: ReadonlySet<number>): string {
   let css = ''
   for (const f of plan.fishes) {
     const wps = f.waypoints.map(wp => ({ ...wp }))
@@ -79,19 +87,87 @@ function fishKeyframes(plan: Plan): string {
       const p = pct(wp.t, plan.duration)
       if (Number(p) <= lastPct || Number(p) >= 100) return
       lastPct = Number(p)
-      entries.push(`${p}%{transform:translate(${wp.x.toFixed(1)}px,${wp.y.toFixed(1)}px)}`)
+      entries.push(
+        `${p}%{transform:translate(${wp.x.toFixed(1)}px,${wp.y.toFixed(1)}px);opacity:${(0.92 + wp.satiety * 0.08).toFixed(3)}}`,
+      )
     })
     const home = wps[wps.length - 1]
-    entries.push(`100%{transform:translate(${home.x.toFixed(1)}px,${home.y.toFixed(1)}px)}`)
+    entries.push(`100%{transform:translate(${home.x.toFixed(1)}px,${home.y.toFixed(1)}px);opacity:0.92}`)
+    const auraEnergy = new Map<number, number>()
+    for (const event of plan.eats) {
+      if (event.fish !== f.id || (highlightedCells && !highlightedCells.has(event.cell))) continue
+      const bucket = Math.min(90, Math.max(1, Math.round((event.t / plan.duration) * 100)))
+      auraEnergy.set(bucket, Math.max(auraEnergy.get(bucket) ?? 0, event.energy))
+    }
+    const restingAura = Math.min(0.18, f.lifetimeEnergy / 900)
+    const auraPoints = new Map<number, number>([
+      [0, restingAura],
+      [100, restingAura],
+    ])
+    for (const [bucket, energy] of auraEnergy) {
+      auraPoints.set(Number((bucket - 0.18).toFixed(2)), restingAura)
+      auraPoints.set(bucket, Math.max(restingAura, Math.min(0.42, 0.12 + energy * 0.04)))
+      auraPoints.set(Number((bucket + 0.68).toFixed(2)), restingAura)
+    }
+    const auraEntries = [...auraPoints]
+      .sort(([a], [b]) => a - b)
+      .map(([point, opacity]) => `${point}%{opacity:${opacity.toFixed(2)}}`)
 
-    css += `@keyframes fp${f.id}{${entries.join('')}}.f${f.id}{animation:fp${f.id} ${plan.duration}s linear infinite}`
+    css +=
+      `@keyframes fp${f.id}{${entries.join('')}}.f${f.id}{animation:fp${f.id} ${plan.duration}s linear infinite}` +
+      `@keyframes fa${f.id}{${auraEntries.join('')}}.a${f.id}{animation:fa${f.id} ${plan.duration}s linear infinite}`
   }
   return css
 }
 
-export function renderSVG(grid: Grid, plan: Plan, theme: Theme, seed: string): { svg: string; meta: RenderMeta } {
+function bestStaticTime(plan: Plan, width: number, seed: string): number {
+  const pads = lilyPadLayout(width, seed)
+  let best = { score: -Infinity, time: plan.duration * 0.5 }
+
+  for (let index = 0; index <= 72; index++) {
+    const time = plan.duration * (0.08 + (index / 72) * 0.74)
+    const trails = plan.fishes.map(fish => fishStaticTrail(fish, time, plan.duration))
+    let score = 0
+
+    trails.forEach((trail, fishIndex) => {
+      for (const point of trail) {
+        const edge = Math.min(point.x, width - point.x, point.y, LAYOUT.height - point.y)
+        score += Math.min(42, edge) * 0.05
+        for (const pad of pads) {
+          const clearance = Math.hypot(point.x - pad.x, point.y - pad.y) - pad.radius
+          score += clearance < 10 ? (clearance - 10) * 8 : Math.min(28, clearance) * 0.015
+        }
+      }
+      const head = trail[0]
+      score -= Math.abs(head.x - width * 0.5) * 0.003
+      score -= Math.abs(head.y - LAYOUT.height * 0.52) * 0.012
+
+      for (let otherIndex = fishIndex + 1; otherIndex < plan.fishes.length; otherIndex++) {
+        const other = fishPointAt(plan.fishes[otherIndex], time, plan.duration)
+        const separation = Math.hypot(head.x - other.x, head.y - other.y)
+        if (separation < 38) score -= (38 - separation) * 3
+      }
+    })
+
+    if (score > best.score) best = { score, time }
+  }
+
+  return best.time
+}
+
+const escapeXML = (value: string) =>
+  value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
+
+export function renderSVG(
+  grid: Grid,
+  plan: Plan,
+  theme: Theme,
+  seed: string,
+  context: RenderContext = {},
+): { svg: string; meta: RenderMeta } {
   const width = svgWidth(grid.weeks)
   const { duration } = plan
+  const staticTime = bestStaticTime(plan, width, seed)
   const r = rng('decor:' + seed)
 
   const eatByCell = new Map(plan.eats.map(e => [e.cell, e]))
@@ -103,12 +179,13 @@ export function renderSVG(grid: Grid, plan: Plan, theme: Theme, seed: string): {
     if (c.level === 0) continue
     const { x, y } = cellCenter(c.week, c.day)
     const eat = eatByCell.get(c.week * 7 + c.day)
+    const highlighted = context.highlightedCells ? context.highlightedCells.has(c.week * 7 + c.day) : true
     const id = eat ? bucketId(bucketOf(eat.t, duration)) : null
     if (id) eatBuckets.add(id)
     const cls = id ? `pk e${id}` : 'pk'
     const rad = PLANKTON_R[c.level]
     const fill = theme.plankton[c.level - 1]
-    const twinkle = theme.halo
+    const twinkle = theme.halo && c.level >= 3
       ? `<circle class="tw" style="animation-delay:-${((c.week * 7 + c.day) % 9) * 0.45}s" cx="${x}" cy="${y}" r="${(rad * 1.8).toFixed(1)}" fill="${theme.halo}" opacity="0.14"/>`
       : ''
     planktonEls +=
@@ -117,8 +194,10 @@ export function renderSVG(grid: Grid, plan: Plan, theme: Theme, seed: string): {
       twinkle +
       `<circle cx="${x}" cy="${y}" r="${rad}" fill="${fill}"/>` +
       `</g>`
-    if (id) {
-      rippleEls += `<circle class="rp r${id}" cx="${x}" cy="${y}" r="5" fill="none" stroke="${theme.ripple}" stroke-width="1.2"/>`
+    if (id && eat) {
+      const rippleRadius = 4.4 + eat.energy * 0.22 + (highlighted ? 0.8 : 0)
+      const rippleWidth = (1 + eat.energy * 0.08) * (highlighted ? 1.35 : 1)
+      rippleEls += `<circle class="rp r${id}${highlighted ? ' fresh' : ''}" cx="${x}" cy="${y}" r="${rippleRadius.toFixed(1)}" fill="none" stroke="${theme.ripple}" stroke-width="${rippleWidth.toFixed(1)}"/>`
     }
   }
 
@@ -148,14 +227,16 @@ export function renderSVG(grid: Grid, plan: Plan, theme: Theme, seed: string): {
 @keyframes pec{0%,100%{transform:rotate(14deg)}50%{transform:rotate(-12deg)}}
 @keyframes tfk{0%,100%{transform:rotate(26deg)}50%{transform:rotate(-26deg)}}
 .tw{animation:tw 3.6s ease-in-out infinite alternate}
-.ray{animation:ray 9.5s ease-in-out infinite alternate}
+.ray{opacity:0.12;animation:ray 9.5s ease-in-out infinite alternate}
 .sway{transform-box:fill-box;transform-origin:center;animation-name:sway;animation-timing-function:ease-in-out;animation-iteration-count:infinite;animation-direction:alternate}
 .bloom{transform-box:fill-box;transform-origin:center;animation:bloom 5.2s ease-in-out infinite alternate}
 .paddle{transform-box:fill-box;transform-origin:center;animation:paddle 1.4s ease-in-out infinite alternate}
 .ca{opacity:0.07;animation:ca 15s ease-in-out infinite alternate}
+.floor{transform-box:fill-box;transform-origin:center;animation-name:floor;animation-timing-function:ease-in-out;animation-iteration-count:infinite;animation-direction:alternate}
+.current{opacity:${theme.key === 'light' ? 0.12 : 0.055};animation:current 19s ease-in-out infinite alternate}
 .mo{opacity:0;animation-name:mo;animation-timing-function:linear;animation-iteration-count:infinite}
 .ar{transform-box:fill-box;transform-origin:center;opacity:0;animation:ar 9s linear infinite}
-.turtle{animation:turtle ${duration}s linear infinite}
+.turtle{transform:translate(${(width * 0.58).toFixed(1)}px,${turtleY}px);animation:turtle ${duration}s linear infinite}
 .night{opacity:0;animation:night ${duration}s linear infinite}
 @keyframes tw{from{opacity:0.06}to{opacity:0.26}}
 @keyframes ray{from{opacity:0.07}to{opacity:0.2}}
@@ -163,14 +244,16 @@ export function renderSVG(grid: Grid, plan: Plan, theme: Theme, seed: string): {
 @keyframes bloom{from{transform:scale(1)}to{transform:scale(1.07)}}
 @keyframes paddle{from{transform:rotate(14deg)}to{transform:rotate(-14deg)}}
 @keyframes ca{from{transform:translate(-26px,0)}to{transform:translate(26px,9px)}}
+@keyframes floor{from{transform:translate(-9px,-2px) scale(0.98);opacity:0.78}to{transform:translate(11px,4px) scale(1.04);opacity:1}}
+@keyframes current{from{transform:translateX(-22px);opacity:${theme.key === 'light' ? 0.07 : 0.035}}to{transform:translateX(24px);opacity:${theme.key === 'light' ? 0.14 : 0.07}}}
 @keyframes mo{0%{transform:translate(0,0);opacity:0}15%{opacity:0.55}85%{opacity:0.4}100%{transform:translate(14px,-26px);opacity:0}}
 @keyframes ar{0%{transform:scale(0.2);opacity:0}6%{opacity:0.22}26%,100%{transform:scale(3.6);opacity:0}}
 @keyframes turtle{0%{transform:translate(-40px,${turtleY}px)}100%{transform:translate(${width + 40}px,${turtleY}px)}}
 @keyframes night{0%,91%{opacity:0}95%,97.5%{opacity:${theme.night}}100%{opacity:0}}
-@media (prefers-reduced-motion:reduce){*{animation:none!important}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}.rp,.tw,.mo,.ar,.night{opacity:0!important}.floor{opacity:0.9}.current{opacity:${theme.key === 'light' ? 0.1 : 0.05}}.ca{opacity:0.07}.ray{opacity:0.12}}
 `
 
-  const css = base + bucketCSS + fishKeyframes(plan)
+  const css = base + bucketCSS + fishKeyframes(plan, context.highlightedCells)
 
   const planktonGlow = theme.plankton
     .map(
@@ -183,9 +266,15 @@ export function renderSVG(grid: Grid, plan: Plan, theme: Theme, seed: string): {
     )
     .join('')
 
+  const owner = context.provenance?.owner
+  const provenance = context.provenance
+    ? `<metadata id="koipond-provenance">${escapeXML(JSON.stringify(context.provenance))}</metadata>`
+    : ''
   const svg =
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${LAYOUT.height}" width="${width}" height="${LAYOUT.height}">` +
-    `<title>Contribution koi pond: ${plan.eats.length} plankton grazed by ${plan.fishes.length} fish</title>` +
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${LAYOUT.height}" width="${width}" height="${LAYOUT.height}" role="img" aria-labelledby="kp-title-${theme.key} kp-desc-${theme.key}">` +
+    `<title id="kp-title-${theme.key}">${owner ? `${escapeXML(owner)}'s ` : ''}Contribution koi pond</title>` +
+    `<desc id="kp-desc-${theme.key}">${plan.eats.length} contribution plankton grazed by ${plan.fishes.length} fish in a deterministic animated ecosystem${context.provenance ? `, cryptographically linked at revision ${context.provenance.revision}` : ''}.</desc>` +
+    provenance +
     `<style>${css}</style>` +
     `<defs>` +
     `<linearGradient id="water" x1="0" y1="0" x2="0" y2="1">` +
@@ -199,6 +288,11 @@ export function renderSVG(grid: Grid, plan: Plan, theme: Theme, seed: string): {
     `<linearGradient id="deepG" x1="0" y1="0" x2="0" y2="1">` +
     `<stop offset="0" stop-color="${theme.deep}" stop-opacity="0"/><stop offset="1" stop-color="${theme.deep}"/>` +
     `</linearGradient>` +
+    `<radialGradient id="floorG" cx="0.5" cy="0.5" r="0.5">` +
+    `<stop offset="0" stop-color="${theme.floorBlotch}" stop-opacity="${theme.key === 'light' ? 0.2 : 0.13}"/>` +
+    `<stop offset="0.58" stop-color="${theme.floorBlotch}" stop-opacity="${theme.key === 'light' ? 0.1 : 0.065}"/>` +
+    `<stop offset="1" stop-color="${theme.floorBlotch}" stop-opacity="0"/>` +
+    `</radialGradient>` +
     `<radialGradient id="vig" cx="0.5" cy="0.5" r="0.72">` +
     `<stop offset="0.55" stop-color="rgba(0,0,0,0)"/><stop offset="1" stop-color="${theme.vignette}"/>` +
     `</radialGradient>` +
@@ -207,8 +301,9 @@ export function renderSVG(grid: Grid, plan: Plan, theme: Theme, seed: string): {
     theme.fishFilter +
     `</defs>` +
     `<rect width="${width}" height="${LAYOUT.height}" rx="10" fill="url(#water)"/>` +
-    floorBlotches(width, theme, r) +
-    deepShade(width) +
+    floorBlotches(width, r) +
+    waterCurrents(width, theme, r) +
+    deepShade(width, theme) +
     caustics(width, theme) +
     godRays(width, theme, r) +
     `<g>${planktonEls}</g>` +
@@ -216,10 +311,10 @@ export function renderSVG(grid: Grid, plan: Plan, theme: Theme, seed: string): {
     pebbles(theme, r) +
     `<rect width="${width}" height="${LAYOUT.height}" rx="10" fill="url(#vig)"/>` +
     surfaceSheen(width, theme) +
-    lilyPads(width, theme, r) +
+    lilyPads(width, theme, seed) +
     (hasLotus ? lotus(lotusX, theme, r) : '') +
     (hasTurtle ? turtle(theme) : '') +
-    plan.fishes.map(f => `<g>${fishSVG(f, theme, seed)}</g>`).join('') +
+    plan.fishes.map(f => `<g>${fishSVG(f, theme, staticTime, duration)}</g>`).join('') +
     ambientRipples(width, theme, r) +
     motes(width, theme, r) +
     `<rect class="night" width="${width}" height="${LAYOUT.height}" rx="10" fill="#000d14"/>` +

@@ -1,4 +1,5 @@
 import { LAYOUT } from '../layout'
+import { lilyPadLayout } from '../ecology'
 import { f1 } from '../util'
 import type { Theme } from './palette'
 
@@ -6,12 +7,31 @@ import type { Theme } from './palette'
 export const SOFT_FILTER =
   `<filter id="soft" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="7"/></filter>`
 
-export function floorBlotches(width: number, theme: Theme, r: () => number): string {
+export function floorBlotches(width: number, r: () => number): string {
   let out = ''
   for (let i = 0; i < 4; i++) {
     const x = f1(width * (0.12 + r() * 0.76))
     const y = f1(30 + r() * (LAYOUT.height - 60))
-    out += `<ellipse cx="${x}" cy="${y}" rx="${f1(70 + r() * 90)}" ry="${f1(26 + r() * 22)}" fill="${theme.floorBlotch}" opacity="0.16"/>`
+    const duration = f1(16 + r() * 9)
+    const delay = f1(r() * 14)
+    out += `<ellipse class="floor" style="animation-duration:${duration}s;animation-delay:-${delay}s" cx="${x}" cy="${y}" rx="${f1(76 + r() * 96)}" ry="${f1(28 + r() * 25)}" fill="url(#floorG)" filter="url(#soft)"/>`
+  }
+  return out
+}
+
+/** Wide, blurred currents add slow variation without competing with the fish. */
+export function waterCurrents(width: number, theme: Theme, r: () => number): string {
+  let out = ''
+  for (let i = 0; i < 3; i++) {
+    const y = 42 + i * 55 + (r() - 0.5) * 18
+    const bend = 22 + r() * 28
+    const d =
+      `M-80 ${f1(y)} ` +
+      `C${f1(width * 0.2)} ${f1(y - bend)} ${f1(width * 0.34)} ${f1(y + bend)} ${f1(width * 0.53)} ${f1(y)} ` +
+      `S${f1(width * 0.82)} ${f1(y - bend)} ${f1(width + 80)} ${f1(y + 4)}`
+    out +=
+      `<path class="current" style="animation-delay:-${f1(i * 4.6 + r() * 3)}s" d="${d}" ` +
+      `fill="none" stroke="${theme.sheen}" stroke-width="${f1(9 + r() * 7)}" stroke-linecap="round" filter="url(#soft)"/>`
   }
   return out
 }
@@ -43,8 +63,9 @@ export function surfaceSheen(width: number, theme: Theme): string {
 }
 
 /** Darkening toward the bottom for depth. */
-export function deepShade(width: number): string {
-  return `<rect y="${LAYOUT.height - 74}" width="${width}" height="74" fill="url(#deepG)"/>`
+export function deepShade(width: number, theme: Theme): string {
+  const height = theme.key === 'light' ? 56 : 74
+  return `<rect y="${LAYOUT.height - height}" width="${width}" height="${height}" fill="url(#deepG)"/>`
 }
 
 export function caustics(width: number, theme: Theme): string {
@@ -86,14 +107,10 @@ function lilyPad(x: number, y: number, radius: number, notchDeg: number, theme: 
   )
 }
 
-export function lilyPads(width: number, theme: Theme, r: () => number): string {
-  const spots: [number, number, number][] = [
-    [46 + r() * 14, 22 + r() * 8, 12 + r() * 3],
-    [78 + r() * 10, 40 + r() * 8, 8 + r() * 2.5],
-    [width - 58 - r() * 12, LAYOUT.height - 32 - r() * 8, 13 + r() * 3],
-    [width - 96 - r() * 10, LAYOUT.height - 52, 7.5 + r() * 2],
-  ]
-  return spots.map(([x, y, rad], i) => lilyPad(x, y, rad, r() * 360, theme, f1(5.5 + i * 0.9 + r() * 2))).join('')
+export function lilyPads(width: number, theme: Theme, seed: string): string {
+  return lilyPadLayout(width, seed)
+    .map(pad => lilyPad(pad.x, pad.y, pad.radius, pad.notchDeg, theme, f1(pad.duration)))
+    .join('')
 }
 
 export function lotus(x: number, theme: Theme, r: () => number): string {
