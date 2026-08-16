@@ -45,7 +45,7 @@ The graph does not just feed the fish, it shapes the ecosystem:
 - **Fish persist between days**: identity, markings and earned growth survive each nightly refresh.
 - **Koi and minnows behave differently**: koi favor high-energy food while minnows favor dense grazing areas.
 - **The pond has physical relationships**: fish separate from one another, minnows school and all fish avoid lily pads.
-- **A 30+ day streak** earns a pond turtle paddling across. 🐢
+- **A resident turtle** crosses every pond; a 30+ day streak earns its full winter trail. 🐢
 - **A 21+ day quiet stretch** makes a lotus bloom over its center. 🪷
 - **Dark mode is bioluminescent**: an abyssal pond, twinkling plankton, glowing spirit koi.
 - **The original light and dark ponds form one 24-hour cycle**: the sun's height and direction move
@@ -53,8 +53,8 @@ The graph does not just feed the fish, it shapes the ecosystem:
 - **The year moves continuously through four physical ecologies**: spring keeps the original pond,
   summer fills its lily pads with flowers, and individual maple leaves cross the autumn surface
   with their own drift, rotation and wake. Winter ice and snow become real obstacles that fish route
-  around; a streak turtle slows at the edge, climbs onto the ice, leaves tracks step by step and
-  splashes back into the water instead of passing beneath it.
+  around; the resident turtle slows at the edge and climbs onto the ice. A streak pond preserves
+  each snow track before the turtle splashes back into the water instead of passing beneath it.
 
 This `original-plus` branch deliberately keeps the original composition and art direction. Its changes
 are behavioral: the same contribution graph now produces a more causal ecosystem instead of adding

@@ -183,6 +183,7 @@ function turtleChoreography(
     ? iceFloeLayout(width, seed, environment.iceCoverage)[1]
     : undefined
   if (!floe) {
+    const initialDelay = ((width * 0.18 + 40) / (width + 80)) * duration
     return {
       css:
         `@keyframes turtle{0%{transform:translate(-40px,${turtleY}px)}100%{transform:translate(${width + 40}px,${turtleY}px)}}` +
@@ -190,7 +191,7 @@ function turtleChoreography(
         `@keyframes turtle-shadow{0%,100%{opacity:0.18;transform:scale(1)}50%{opacity:0.14;transform:scale(0.94)}}` +
         `.snow-track{opacity:0}`,
       effects: '',
-      delay: 0,
+      delay: initialDelay,
     }
   }
   const percentAt = (x: number) => Math.max(0, Math.min(100, ((x + 40) / (width + 80)) * 100))
@@ -416,7 +417,8 @@ export function renderSVG(
 
   const streak = longestStreak(grid)
   const gap = longestGap(grid)
-  const hasTurtle = streak >= TURTLE_STREAK
+  const hasTurtle = true
+  const hasTurtleTrail = streak >= TURTLE_STREAK
   const hasLotus = gap.len >= LOTUS_GAP
   const turtleY = LAYOUT.height - 26
   const lotusX = Math.min(Math.max(LAYOUT.padX + gap.centerWeek * LAYOUT.cell, 34), width - 34)
@@ -592,7 +594,7 @@ ${turtleScene.css}
       : '') +
     plan.fishes.map(f => `<g>${fishSVG(f, theme, staticTime, timelineDuration)}</g>`).join('') +
     autumnMapleLeaves(width, theme, seed, environment?.mapleDrift ?? 0) +
-    winterIce(width, theme, seed, environment?.iceCoverage ?? 0, hasTurtle) +
+    winterIce(width, theme, seed, environment?.iceCoverage ?? 0, hasTurtleTrail) +
     (hasTurtle ? turtleScene.effects + turtle(theme) : '') +
     ambientRipples(width, theme, r, ambientRippleCount) +
     motes(width, theme, r, moteCount) +
