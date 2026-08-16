@@ -20,11 +20,13 @@ import {
   moonWaterLight,
   motes,
   pebbles,
+  summerFireflies,
   summerBlooms,
   surfaceSheen,
   turtle,
   waterCurrents,
   winterIce,
+  winterSnowfall,
 } from './decor'
 import { fishPointAt, fishStaticTrail, fishSVG } from './fish'
 import type { Theme } from './palette'
@@ -497,6 +499,12 @@ export function renderSVG(
   const turtleRestY = turtleFloe ? Math.min(turtleY - 6, turtleFloe.y - 2) : turtleY
   const turtleWalkingOnIce = Boolean(turtleFloe)
   const turtleDelay = `-${f1(turtleScene.delay)}s`
+  const summerNightActivity = environment?.season === 'summer'
+    ? environment.summerBloom * environment.nightDepth
+    : 0
+  const winterNightActivity = environment?.season === 'winter'
+    ? environment.winterStillness * environment.nightDepth
+    : 0
 
   const base = `
 .pk,.rp{transform-box:fill-box;transform-origin:center;animation-duration:${animationDuration}s;animation-timing-function:linear;animation-iteration-count:infinite}
@@ -511,6 +519,10 @@ export function renderSVG(
 .sway{transform-box:fill-box;transform-origin:center;animation-name:sway;animation-timing-function:ease-in-out;animation-iteration-count:infinite;animation-direction:alternate}
 .bloom{transform-box:fill-box;transform-origin:center;animation:bloom 5.2s ease-in-out infinite alternate}
 .lotus-bud{transform-box:fill-box;transform-origin:center;animation:lotus-bud 4.8s ease-in-out infinite alternate}
+.summer-lotus-bud{transform-box:fill-box;transform-origin:center;animation:summer-lotus-bud 5.4s ease-in-out infinite alternate}
+.firefly-flight{animation-name:firefly-flight;animation-timing-function:linear;animation-iteration-count:infinite}
+.firefly-glow{transform-box:fill-box;transform-origin:center;animation-name:firefly-glow;animation-timing-function:ease-in-out;animation-iteration-count:infinite}
+.snowfall{animation-name:snowfall;animation-timing-function:linear;animation-iteration-count:infinite}
 .sun-path{transform-box:fill-box;transform-origin:center;animation:sun-path 12s ease-in-out infinite alternate}
 .moon-path{transform-box:fill-box;transform-origin:center;animation:moon-path 10.5s ease-in-out infinite alternate}
 .moon-path-b{animation-direction:alternate-reverse;animation-duration:13s}
@@ -533,6 +545,10 @@ export function renderSVG(
 @keyframes sway{from{transform:rotate(${(swayBias - swayAngle).toFixed(1)}deg)}to{transform:rotate(${(swayBias + swayAngle).toFixed(1)}deg)}}
 @keyframes bloom{from{transform:scale(1)}to{transform:scale(1.07)}}
 @keyframes lotus-bud{from{transform:translateY(0) rotate(-2deg)}to{transform:translateY(-0.5px) rotate(2deg)}}
+@keyframes summer-lotus-bud{from{transform:scale(0.96) rotate(-1deg)}to{transform:scale(1.02) rotate(1deg)}}
+@keyframes firefly-flight{0%,100%{transform:translate(0,0)}29%{transform:translate(var(--ffx1),var(--ffy1))}64%{transform:translate(var(--ffx2),var(--ffy2))}82%{transform:translate(var(--ffx3),var(--ffy3))}}
+@keyframes firefly-glow{0%,100%{transform:scale(0.72);opacity:0.2}32%{transform:scale(1);opacity:1}54%{transform:scale(0.78);opacity:0.28}78%{transform:scale(0.94);opacity:0.82}}
+@keyframes snowfall{0%{transform:translate(0,-12px) rotate(0);opacity:0}9%{opacity:var(--snow-opacity)}42%{transform:translate(var(--snow-x1),76px) rotate(72deg);opacity:var(--snow-opacity)}73%{transform:translate(var(--snow-x2),139px) rotate(132deg);opacity:var(--snow-opacity)}92%{opacity:var(--snow-opacity)}100%{transform:translate(var(--snow-x3),202px) rotate(185deg);opacity:0}}
 @keyframes sun-path{from{transform:translateX(${f1(-lightDrift)}px) scale(0.98)}to{transform:translateX(${f1(lightDrift)}px) scale(1.02)}}
 @keyframes moon-path{from{transform:translateX(${f1(-moonDrift)}px) scale(0.94,0.98);opacity:0.72}to{transform:translateX(${f1(moonDrift)}px) scale(1.08,1.03);opacity:1}}
 @keyframes paddle{from{transform:rotate(14deg)}to{transform:rotate(-14deg)}}
@@ -547,7 +563,7 @@ export function renderSVG(
 @keyframes ice-glint{from{opacity:0.56}to{opacity:0.9}}
 ${turtleScene.css}
 @keyframes night{0%,91%{opacity:0}95%,97.5%{opacity:${theme.night}}100%{opacity:0}}
-@media (prefers-reduced-motion:reduce){*{animation:none!important}.rp,.tw,.mo,.ar,.night,.turtle-splash,.turtle-impact,.turtle-droplet{opacity:0!important}.floor{opacity:var(--floor-opacity,0.28)!important}.current{opacity:${currentPeak.toFixed(3)}}.ca{opacity:${causticOpacity.toFixed(3)}}.ray{opacity:${rayPeak.toFixed(3)}}.maple{transform:none;opacity:0.9}.snow-track{opacity:0.28!important}.turtle{transform:translate(${f1(turtleRestX)}px,${f1(turtleRestY)}px)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}.rp,.tw,.mo,.ar,.night,.turtle-splash,.turtle-impact,.turtle-droplet,.snowfall{opacity:0!important}.floor{opacity:var(--floor-opacity,0.28)!important}.current{opacity:${currentPeak.toFixed(3)}}.ca{opacity:${causticOpacity.toFixed(3)}}.ray{opacity:${rayPeak.toFixed(3)}}.maple{transform:none;opacity:0.9}.firefly-glow{opacity:0.55}.snow-track{opacity:0.28!important}.turtle{transform:translate(${f1(turtleRestX)}px,${f1(turtleRestY)}px)}}
 `
 
   const css = base + bucketCSS + fishKeyframes(plan, animationDuration)
@@ -632,9 +648,16 @@ ${turtleScene.css}
     lilyPads(width, theme, seed, environment?.plantCoverage ?? 1) +
     summerBlooms(width, theme, seed, environment?.summerBloom ?? 0, environment?.lotusOpenness ?? 1) +
     (hasLotus && lotusPresence >= 0.35
-      ? `<g opacity="${lotusPresence.toFixed(3)}">${lotus(lotusX, theme, r, environment?.lotusOpenness ?? 1)}</g>`
+      ? `<g opacity="${lotusPresence.toFixed(3)}">${lotus(
+          lotusX,
+          theme,
+          r,
+          environment?.lotusOpenness ?? 1,
+          environment?.season === 'summer',
+        )}</g>`
       : '') +
     plan.fishes.map(f => `<g>${fishSVG(f, theme, staticTime, timelineDuration, animationDuration)}</g>`).join('') +
+    summerFireflies(width, seed, summerNightActivity) +
     autumnMapleLeaves(
       width,
       theme,
@@ -645,6 +668,13 @@ ${turtleScene.css}
     ) +
     winterIce(width, theme, seed, environment?.iceCoverage ?? 0, hasTurtle) +
     (hasTurtle ? turtleScene.effects + turtle(theme) : '') +
+    winterSnowfall(
+      width,
+      seed,
+      winterNightActivity,
+      environment?.currentDirection ?? 1,
+      environment?.currentStrength ?? 0.5,
+    ) +
     ambientRipples(width, theme, r, ambientRippleCount) +
     motes(width, theme, r, moteCount) +
     `<rect class="night" width="${width}" height="${LAYOUT.height}" rx="10" fill="${theme.nightTint}"/>` +

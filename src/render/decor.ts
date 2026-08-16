@@ -220,10 +220,12 @@ function smallLotus(theme: Theme, scale: number, delay: number, openness: number
     `<ellipse cx="1.8" cy="2.5" rx="7.2" ry="6" fill="rgba(0,20,25,0.18)"/>` +
     `<g class="lotus-open-stage" opacity="${openOpacity.toFixed(3)}" transform="scale(${f1(openScaleX)} ${f1(openScaleY)})">` +
     `<g class="bloom" style="animation-delay:-${f1(delay)}s">${petals}${inner}<circle r="1.7" fill="${theme.lotusHeart}"/></g></g>` +
-    `<g class="lotus-bud" opacity="${budOpacity.toFixed(3)}" style="animation-delay:-${f1(delay * 0.6)}s">` +
-    `<ellipse rx="2.5" ry="5.8" fill="${theme.lotusOuter}"/>` +
-    `<ellipse rx="2" ry="5.1" transform="rotate(26)" fill="${theme.lotusInner}"/>` +
-    `<ellipse rx="2" ry="5.1" transform="rotate(-26)" fill="${theme.lotusOuter}"/>` +
+    `<g class="summer-lotus-bud" data-lotus-form="closed-rosette" opacity="${budOpacity.toFixed(3)}" style="animation-delay:-${f1(delay * 0.6)}s">` +
+    `<ellipse rx="4.8" ry="3.1" fill="${theme.lotusOuter}" opacity="0.72"/>` +
+    `<ellipse rx="4.2" ry="1.65" transform="rotate(0)" fill="${theme.lotusInner}"/>` +
+    `<ellipse rx="4" ry="1.55" transform="rotate(58)" fill="${theme.lotusOuter}"/>` +
+    `<ellipse rx="4" ry="1.55" transform="rotate(-58)" fill="${theme.lotusInner}"/>` +
+    `<circle r="0.75" fill="${theme.lotusHeart}" opacity="0.58"/>` +
     `</g>` +
     `</g>`
   )
@@ -248,6 +250,38 @@ export function summerBlooms(
     )
     .join('')
   return `<g data-seasonal-part="summer-bloom" opacity="${f1(Math.min(1, intensity * 0.94))}">${blooms}</g>`
+}
+
+export function summerFireflies(width: number, seed: string, intensity: number): string {
+  if (intensity < 0.08) return ''
+  const r = rng(`fireflies:${seed}`)
+  const pads = lilyPadLayout(width, seed)
+  const count = Math.round(4 + Math.min(1, intensity) * 4)
+  let fireflies = ''
+  for (let index = 0; index < count; index++) {
+    const pad = pads[index % pads.length]
+    const angle = r() * Math.PI * 2
+    const distance = 24 + r() * 42
+    const x = Math.max(18, Math.min(width - 18, pad.x + Math.cos(angle) * distance))
+    const y = Math.max(18, Math.min(LAYOUT.height - 24, pad.y + Math.sin(angle) * distance * 0.52))
+    const x1 = (r() - 0.5) * 15
+    const y1 = (r() - 0.5) * 8
+    const x2 = x1 + (r() - 0.5) * 13
+    const y2 = y1 + (r() - 0.5) * 9
+    const x3 = (r() - 0.5) * 12
+    const y3 = (r() - 0.5) * 7
+    const duration = 10 + r() * 7
+    const delay = r() * duration
+    const pulse = 2.1 + r() * 1.8
+    fireflies +=
+      `<g transform="translate(${f1(x)} ${f1(y)})">` +
+      `<g class="firefly-flight" style="--ffx1:${f1(x1)}px;--ffy1:${f1(y1)}px;--ffx2:${f1(x2)}px;--ffy2:${f1(y2)}px;--ffx3:${f1(x3)}px;--ffy3:${f1(y3)}px;animation-duration:${f1(duration)}s;animation-delay:-${f1(delay)}s">` +
+      `<g class="firefly-glow" style="animation-duration:${f1(pulse)}s;animation-delay:-${f1(delay * 0.37)}s">` +
+      `<circle r="3" fill="#d9f47f" opacity="0.14"/>` +
+      `<circle r="0.78" fill="#f4ffb2"/>` +
+      `</g></g></g>`
+  }
+  return `<g data-seasonal-part="summer-fireflies" opacity="${f1(Math.min(0.9, intensity * 0.9))}">${fireflies}</g>`
 }
 
 const MAPLE_PATH =
@@ -347,7 +381,47 @@ export function winterIce(
   return `<g data-seasonal-part="winter-ice" opacity="${f1(visibleCoverage * 0.96)}">${elements}</g>`
 }
 
-export function lotus(x: number, theme: Theme, r: () => number, openness = 1): string {
+export function winterSnowfall(
+  width: number,
+  seed: string,
+  intensity: number,
+  currentDirection = 1,
+  currentStrength = 0.5,
+): string {
+  if (intensity < 0.08) return ''
+  const r = rng(`snowfall:${seed}`)
+  const count = Math.round(9 + Math.min(1, intensity) * 9)
+  const wind = currentDirection * (8 + currentStrength * 15)
+  let flakes = ''
+  for (let index = 0; index < count; index++) {
+    const x = 16 + r() * (width - 32)
+    const drift = wind + (r() - 0.5) * 14
+    const x1 = drift * 0.3 + (r() - 0.5) * 7
+    const x2 = drift * 0.68 + (r() - 0.5) * 8
+    const duration = 12 + r() * 10
+    const delay = r() * duration
+    const near = index % 4 === 0
+    const scale = near ? 0.86 + r() * 0.34 : 0.48 + r() * 0.36
+    const opacity = near ? 0.64 + r() * 0.18 : 0.34 + r() * 0.2
+    const flake = near
+      ? `<path d="M-1.8 0 H1.8 M0 -1.8 V1.8" fill="none" stroke="#eefcff" stroke-width="0.55" stroke-linecap="round"/><circle r="0.55" fill="#f7feff"/>`
+      : `<circle r="1.05" fill="#e8f9fc"/>`
+    flakes +=
+      `<g transform="translate(${f1(x)} 0) scale(${f1(scale)})">` +
+      `<g class="snowfall" style="--snow-x1:${f1(x1)}px;--snow-x2:${f1(x2)}px;--snow-x3:${f1(drift)}px;--snow-opacity:${opacity.toFixed(2)};animation-duration:${f1(duration)}s;animation-delay:-${f1(delay)}s">` +
+      flake +
+      `</g></g>`
+  }
+  return `<g data-seasonal-part="winter-snowfall" opacity="${f1(Math.min(0.92, intensity * 0.92))}">${flakes}</g>`
+}
+
+export function lotus(
+  x: number,
+  theme: Theme,
+  r: () => number,
+  openness = 1,
+  compactNightBloom = false,
+): string {
   const y = 24 + r() * 6
   const open = clamp01(openness)
   const openOpacity = clamp01((open - 0.16) / 0.72)
@@ -362,6 +436,19 @@ export function lotus(x: number, theme: Theme, r: () => number, openness = 1): s
   for (let k = 0; k < 5; k++) {
     inner += `<ellipse rx="4.6" ry="2" transform="rotate(${22 + k * 72})" fill="${theme.lotusInner}"/>`
   }
+  const closedStage = compactNightBloom
+    ? `<g class="summer-lotus-bud" data-lotus-form="closed-rosette" opacity="${budOpacity.toFixed(3)}">` +
+      `<ellipse rx="6.8" ry="4.3" fill="${theme.lotusOuter}" opacity="0.72"/>` +
+      `<ellipse rx="6" ry="2.35" fill="${theme.lotusInner}"/>` +
+      `<ellipse rx="5.7" ry="2.2" transform="rotate(58)" fill="${theme.lotusOuter}"/>` +
+      `<ellipse rx="5.7" ry="2.2" transform="rotate(-58)" fill="${theme.lotusInner}"/>` +
+      `<circle r="1" fill="${theme.lotusHeart}" opacity="0.58"/>` +
+      `</g>`
+    : `<g class="lotus-bud" opacity="${budOpacity.toFixed(3)}">` +
+      `<ellipse rx="3.5" ry="8" fill="${theme.lotusOuter}"/>` +
+      `<ellipse rx="2.8" ry="7" transform="rotate(25)" fill="${theme.lotusInner}"/>` +
+      `<ellipse rx="2.8" ry="7" transform="rotate(-25)" fill="${theme.lotusOuter}"/>` +
+      `</g>`
   return (
     `<g transform="translate(${f1(x)} ${f1(y)})">` +
     `<ellipse cx="2.5" cy="3.5" rx="13" ry="12" fill="rgba(0,20,25,0.2)"/>` +
@@ -370,11 +457,8 @@ export function lotus(x: number, theme: Theme, r: () => number, openness = 1): s
     `<g data-lotus-state="${lotusState(open)}" data-lotus-openness="${open.toFixed(3)}">` +
     `<g class="lotus-open-stage" opacity="${openOpacity.toFixed(3)}" transform="scale(${f1(openScaleX)} ${f1(openScaleY)})">` +
     `<g class="bloom">${petals}${inner}<circle r="2.3" fill="${theme.lotusHeart}"/></g></g>` +
-    `<g class="lotus-bud" opacity="${budOpacity.toFixed(3)}">` +
-    `<ellipse rx="3.5" ry="8" fill="${theme.lotusOuter}"/>` +
-    `<ellipse rx="2.8" ry="7" transform="rotate(25)" fill="${theme.lotusInner}"/>` +
-    `<ellipse rx="2.8" ry="7" transform="rotate(-25)" fill="${theme.lotusOuter}"/>` +
-    `</g></g>` +
+    closedStage +
+    `</g>` +
     `</g>`
   )
 }
