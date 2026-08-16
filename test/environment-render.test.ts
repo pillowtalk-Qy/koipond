@@ -45,8 +45,39 @@ describe('environment-aware original renderer', () => {
     expect(springSvg).not.toContain('data-seasonal-part=')
     expect(summerSvg).toContain('data-seasonal-part="summer-bloom"')
     expect(autumnSvg).toContain('data-seasonal-part="autumn-maple"')
+    expect(autumnSvg).toContain('class="maple-wake"')
+    expect(autumnSvg).toContain('class="maple-body"')
+    expect(autumnSvg).toContain('--mx0:')
+    expect(autumnSvg).toContain('--mx3:')
+    expect(autumnSvg).toContain('@keyframes maple{')
     expect(autumnSvg.match(/data-pond-part="lily-pad"/g)).toHaveLength(3)
     expect(pondPlan.fishes.every(fish => springSvg.includes(`@keyframes fp${fish.id}`))).toBe(true)
     expect(pondPlan.fishes.every(fish => autumnSvg.includes(`@keyframes fp${fish.id}`))).toBe(true)
+  })
+
+  it('synchronizes the winter turtle with ice contact, tracks and water feedback', () => {
+    const turtleGrid = {
+      ...grid,
+      cells: grid.cells.map(cell => ({ ...cell, count: 1, level: 1 as const })),
+    }
+    const turtlePlan = plan(turtleGrid, 'winter-turtle')
+    const winter = deriveEnvironment(momentFromText('2026-12-21', '12:00'), 'winter')
+    const { svg, meta } = renderSVG(
+      turtleGrid,
+      turtlePlan,
+      themeForEnvironment(winter),
+      'winter-turtle',
+      { environment: winter },
+    )
+
+    expect(meta.turtle).toBe(true)
+    expect(svg).toContain('data-pond-part="turtle-water-feedback"')
+    expect(svg).toContain('class="turtle-body"')
+    expect(svg).toContain('class="turtle-shadow"')
+    expect(svg).toContain('class="snow-track snow-track-0"')
+    expect(svg).toContain('@keyframes turtle-body{')
+    expect(svg).toContain('@keyframes turtle-shadow{')
+    expect(svg).toContain('@keyframes turtle-splash-out{')
+    expect(svg).toContain('@keyframes snow-track-7{')
   })
 })

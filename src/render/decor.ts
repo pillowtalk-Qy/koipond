@@ -165,19 +165,27 @@ export function autumnMapleLeaves(width: number, theme: Theme, seed: string, int
     : ['#d85c42', '#e5833d', '#c69a45']
   let leaves = ''
   for (let index = 0; index < 8; index++) {
-    const x = 70 + r() * (width - 140)
-    const y = 28 + r() * (LAYOUT.height - 58)
+    const x = 58 + r() * (width - 116)
+    const y = 24 + r() * (LAYOUT.height - 52)
     const rotation = r() * 360
     const scale = 0.65 + r() * 0.45
-    const duration = 10 + r() * 8
+    const duration = 34 + r() * 24
     const delay = r() * duration
+    const startX = -x - 24 - r() * 32
+    const endX = width - x + 24 + r() * 32
+    const distance = endX - startX
+    const y1 = (r() - 0.5) * 20
+    const y2 = (r() - 0.5) * 28
+    const y3 = (r() - 0.5) * 18
     leaves +=
       `<g transform="translate(${f1(x)} ${f1(y)}) rotate(${f1(rotation)}) scale(${f1(scale)})">` +
-      `<g class="maple" style="animation-duration:${f1(duration)}s;animation-delay:-${f1(delay)}s">` +
+      `<g class="maple" style="--mx0:${f1(startX)}px;--mx1:${f1(startX + distance * 0.28)}px;--my1:${f1(y1)}px;--mx2:${f1(startX + distance * 0.63)}px;--my2:${f1(y2)}px;--mx3:${f1(endX)}px;--my3:${f1(y3)}px;animation-duration:${f1(duration)}s;animation-delay:-${f1(delay)}s">` +
+      `<ellipse class="maple-wake" cx="-2" cy="3" rx="7" ry="2.8" fill="none" stroke="${theme.ripple}" stroke-width="0.8"/>` +
+      `<g class="maple-body" style="animation-delay:-${f1(delay * 0.37)}s">` +
       `<path d="${MAPLE_PATH}" transform="translate(1.4 1.8)" fill="rgba(0,20,25,0.17)"/>` +
       `<path d="${MAPLE_PATH}" fill="${colors[index % colors.length]}" stroke="rgba(92,48,29,0.24)" stroke-width="0.7"/>` +
       `<path d="M0 2 L0 9" stroke="${colors[(index + 1) % colors.length]}" stroke-width="1" stroke-linecap="round"/>` +
-      `</g></g>`
+      `</g></g></g>`
   }
   return `<g data-seasonal-part="autumn-maple" opacity="${f1(Math.min(1, intensity * 0.96))}">${leaves}</g>`
 }
@@ -208,10 +216,11 @@ function smoothIcePath(floe: IceFloeSpec, seed: string, index: number): string {
 
 function snowTracks(floe: IceFloeSpec): string {
   let tracks = ''
-  for (let index = -4; index <= 3; index++) {
-    tracks += `<ellipse cx="${index * 12}" cy="${index % 2 === 0 ? -3 : 3}" rx="2.8" ry="1.5" fill="rgba(92,143,155,0.2)" transform="rotate(${index % 2 === 0 ? 18 : -18})"/>`
+  for (let index = 0; index < 8; index++) {
+    const offset = index - 4
+    tracks += `<ellipse class="snow-track snow-track-${index}" cx="${offset * 12}" cy="${index % 2 === 0 ? -3 : 3}" rx="2.8" ry="1.5" fill="rgba(72,124,138,0.5)" transform="rotate(${index % 2 === 0 ? 18 : -18})"/>`
   }
-  return `<g aria-label="turtle tracks in snow" opacity="${floe.rx > 55 ? 0.8 : 0}">${tracks}</g>`
+  return `<g aria-label="turtle tracks in snow" opacity="${floe.rx > 55 ? 1 : 0}">${tracks}</g>`
 }
 
 export function winterIce(
@@ -311,7 +320,8 @@ export function turtle(theme: Theme): string {
     `<g transform="rotate(${deg} ${x} ${y})"><ellipse class="paddle" style="animation-delay:${delay}s" cx="${x}" cy="${y}" rx="4.4" ry="1.9" fill="${theme.turtleSkin}"/></g>`
   return (
     `<g class="turtle">` +
-    `<ellipse cx="2.5" cy="4" rx="11.5" ry="10" fill="rgba(0,20,25,0.2)"/>` +
+    `<ellipse class="turtle-shadow" cx="2.5" cy="4" rx="11.5" ry="10" fill="rgba(0,20,25,0.2)"/>` +
+    `<g class="turtle-body">` +
     flipper(-7, -8, -38, 0) +
     flipper(-7, 8, 38, -0.65) +
     flipper(6, -8.5, 32, -0.65) +
@@ -323,6 +333,6 @@ export function turtle(theme: Theme): string {
     `<path d="M0 -6.6 V6.6 M-5.7 -3.3 L5.7 3.3 M-5.7 3.3 L5.7 -3.3" stroke="${theme.turtleRing}" stroke-width="1.1"/>` +
     `<path d="M-3.5 -8.6 A9.2 9.2 0 0 1 5 -7.8" fill="none" stroke="${theme.sheen}" stroke-width="1.3" opacity="0.4" stroke-linecap="round"/>` +
     `<circle cx="13.4" cy="-1.2" r="0.7" fill="#10222c"/><circle cx="13.4" cy="1.2" r="0.7" fill="#10222c"/>` +
-    `</g>`
+    `</g></g>`
   )
 }
