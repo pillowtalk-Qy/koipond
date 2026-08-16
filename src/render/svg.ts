@@ -59,7 +59,6 @@ const bucketId = (b: number) => b.toFixed(1).replace('.', '_')
 function fishKeyframes(
   plan: Plan,
   animationDuration: number,
-  highlightedCells?: ReadonlySet<number>,
 ): string {
   let css = ''
   for (const f of plan.fishes) {
@@ -105,29 +104,7 @@ function fishKeyframes(
     })
     const home = wps[wps.length - 1]
     entries.push(`100%{transform:translate(${home.x.toFixed(1)}px,${home.y.toFixed(1)}px);opacity:0.92}`)
-    const auraEnergy = new Map<number, number>()
-    for (const event of plan.eats) {
-      if (event.fish !== f.id || (highlightedCells && !highlightedCells.has(event.cell))) continue
-      const bucket = Math.min(90, Math.max(1, Math.round((event.t / plan.duration) * 100)))
-      auraEnergy.set(bucket, Math.max(auraEnergy.get(bucket) ?? 0, event.energy))
-    }
-    const restingAura = Math.min(0.18, f.lifetimeEnergy / 900)
-    const auraPoints = new Map<number, number>([
-      [0, restingAura],
-      [100, restingAura],
-    ])
-    for (const [bucket, energy] of auraEnergy) {
-      auraPoints.set(Number((bucket - 0.18).toFixed(2)), restingAura)
-      auraPoints.set(bucket, Math.max(restingAura, Math.min(0.42, 0.12 + energy * 0.04)))
-      auraPoints.set(Number((bucket + 0.68).toFixed(2)), restingAura)
-    }
-    const auraEntries = [...auraPoints]
-      .sort(([a], [b]) => a - b)
-      .map(([point, opacity]) => `${point}%{opacity:${opacity.toFixed(2)}}`)
-
-    css +=
-      `@keyframes fp${f.id}{${entries.join('')}}.f${f.id}{animation:fp${f.id} ${animationDuration}s linear infinite}` +
-      `@keyframes fa${f.id}{${auraEntries.join('')}}.a${f.id}{animation:fa${f.id} ${animationDuration}s linear infinite}`
+    css += `@keyframes fp${f.id}{${entries.join('')}}.f${f.id}{animation:fp${f.id} ${animationDuration}s linear infinite}`
   }
   return css
 }
@@ -573,7 +550,7 @@ ${turtleScene.css}
 @media (prefers-reduced-motion:reduce){*{animation:none!important}.rp,.tw,.mo,.ar,.night,.turtle-splash,.turtle-impact,.turtle-droplet{opacity:0!important}.floor{opacity:var(--floor-opacity,0.28)!important}.current{opacity:${currentPeak.toFixed(3)}}.ca{opacity:${causticOpacity.toFixed(3)}}.ray{opacity:${rayPeak.toFixed(3)}}.maple{transform:none;opacity:0.9}.snow-track{opacity:0.28!important}.turtle{transform:translate(${f1(turtleRestX)}px,${f1(turtleRestY)}px)}}
 `
 
-  const css = base + bucketCSS + fishKeyframes(plan, animationDuration, context.highlightedCells)
+  const css = base + bucketCSS + fishKeyframes(plan, animationDuration)
 
   const planktonGlow = theme.plankton
     .map(

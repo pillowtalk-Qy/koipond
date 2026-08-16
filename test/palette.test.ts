@@ -43,6 +43,11 @@ describe('environment palette', () => {
     expect(new Set(themes.map(theme => theme.waterTop)).size).toBe(4)
     expect(new Set(themes.map(theme => theme.plankton[3])).size).toBe(4)
     expect(new Set(themes.map(theme => theme.nightTint)).size).toBe(4)
+    for (const theme of themes) {
+      const [red, green, blue] = theme.plankton[3].match(/[\d.]+/g)?.map(Number) ?? []
+      expect(green).toBeGreaterThan(red)
+      expect(blue).toBeGreaterThan(red)
+    }
   })
 
   it('lets lunar illumination alter the night palette without changing its season', () => {

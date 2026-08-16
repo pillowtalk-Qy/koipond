@@ -3,6 +3,7 @@ import { demoGrid } from '../src/demo'
 import { deriveEnvironment, momentFromText } from '../src/environment'
 import { svgWidth } from '../src/layout'
 import { plan } from '../src/planner'
+import { fishSVG } from '../src/render/fish'
 import { THEMES, themeForEnvironment } from '../src/render/palette'
 import { renderSVG } from '../src/render/svg'
 
@@ -190,5 +191,15 @@ describe('environment-aware original renderer', () => {
         expect(svg).toContain(`100%{transform:${start};opacity:0.92}`)
       }
     }
+  })
+
+  it('keeps persistent history out of the original fish drawing language', () => {
+    const fish = pondPlan.fishes[0]
+    const staticTime = pondPlan.duration * 0.4
+    const original = fishSVG({ ...fish, lifetimeEnergy: 0 }, THEMES.dark, staticTime, pondPlan.duration)
+    const mature = fishSVG({ ...fish, lifetimeEnergy: 10_000 }, THEMES.dark, staticTime, pondPlan.duration)
+
+    expect(mature).toBe(original)
+    expect(mature).not.toContain(`class="a${fish.id}"`)
   })
 })

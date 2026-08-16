@@ -48,7 +48,6 @@ export function fishSVG(
   const lag = isKoi ? 0.05 : 0.042
   const radii = isKoi ? radiusProfile(N, 4, 4.2, 6.5, 1.5) : radiusProfile(N, 3, 2.2, 3.2, 0.9)
   const staticTrail = fishStaticTrail(f, staticTime, duration)
-  const head = staticTrail[0]
   const delayForLag = (trailLag: number) =>
     trailLag <= 0 ? undefined : -(animationDuration - trailLag * (animationDuration / duration))
 
@@ -71,10 +70,8 @@ export function fishSVG(
 
   const bandStart = 5 + Math.floor(rf() * 3)
   const bandEnd = bandStart + 3 + Math.floor(rf() * 3)
-  const memoryMarks = isKoi ? Math.min(3, Math.floor(Math.log1p(f.lifetimeEnergy) / 2)) : 0
-  const band2 = isKoi && (rf() < 0.45 || memoryMarks >= 2)
+  const band2 = isKoi && rf() < 0.45
   const b2Start = 14 + Math.floor(rf() * 2)
-  const memoryIndexes = [3 + Math.floor(rf() * 2), 9 + Math.floor(rf() * 3), 15 + Math.floor(rf() * 2)]
 
   const segFill = (i: number) => {
     if (!isKoi) return base
@@ -85,16 +82,13 @@ export function fishSVG(
   const segOpacity = (i: number) => Math.min(0.94, 0.86 * Math.pow(1 - i / (N - 1), 1.05) + 0.15)
 
   const ridge = theme.key === 'dark' ? '#e6fbff' : '#0a2430'
-  const ridgeOp = (theme.key === 'dark' ? 0.17 : 0.13) + memoryMarks * 0.018
+  const ridgeOp = theme.key === 'dark' ? 0.17 : 0.13
   let trail = ''
   for (let i = N - 1; i >= 0; i--) {
     const d = positionStyle(staticTrail[i], delayForLag(i * lag))
     trail += `<circle class="${cls}"${d} r="${f2(radii[i] * f.size)}" fill="${segFill(i)}" fill-opacity="${f2(segOpacity(i))}"/>`
     if (isKoi && i >= 2 && i <= 13) {
       trail += `<circle class="${cls}"${d} r="${f2(radii[i] * f.size * 0.42)}" fill="${ridge}" fill-opacity="${f2(ridgeOp)}"/>`
-    }
-    if (memoryIndexes.slice(0, memoryMarks).includes(i)) {
-      trail += `<circle class="${cls}"${d} r="${f2(radii[i] * f.size * 0.18)}" fill="${band}" fill-opacity="${theme.key === 'dark' ? '0.52' : '0.34'}"/>`
     }
   }
 
@@ -124,11 +118,5 @@ export function fishSVG(
     `<circle cx="${glint}" cy="${f2(eo - glint * 0.6)}" r="${glint}" fill="#ffffff" fill-opacity="0.85"/>` +
     `</g>`
 
-  const auraRadius = f2((isKoi ? 10.5 : 6.8) * f.size)
-  const restingAura = f2(Math.min(0.18, f.lifetimeEnergy / 900))
-  const aura =
-    `<g class="${cls}"${positionStyle(head)}><circle class="a${f.id}" style="opacity:${restingAura}" ` +
-    `r="${auraRadius}" fill="${theme.halo ?? fin}" filter="url(#soft)"/></g>`
-
-  return `${aura}${pecs}${tailFin}<g filter="url(#fx)">${trail}</g>${eyes}`
+  return `${pecs}${tailFin}<g filter="url(#fx)">${trail}</g>${eyes}`
 }
