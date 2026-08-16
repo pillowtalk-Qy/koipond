@@ -113,6 +113,35 @@ function returnPointOpen(
   )
 }
 
+function constrainReturnPoint(
+  point: Point,
+  fishSize: number,
+  width: number,
+  obstacles: PondObstacleSpec[],
+): Point {
+  const constrained = {
+    x: Math.max(12.1, Math.min(width - 12.1, point.x)),
+    y: Math.max(12.1, Math.min(LAYOUT.height - 12.1, point.y)),
+  }
+  for (let pass = 0; pass < 10; pass++) {
+    let moved = false
+    for (const obstacle of obstacles) {
+      const dx = constrained.x - obstacle.x
+      const dy = constrained.y - obstacle.y
+      const distance = Math.hypot(dx, dy)
+      const clearance = obstacle.radius + fishSize * 4 + 2.1
+      if (distance >= clearance) continue
+      const normalX = distance > 1e-6 ? dx / distance : 1
+      const normalY = distance > 1e-6 ? dy / distance : 0
+      constrained.x = obstacle.x + normalX * clearance
+      constrained.y = obstacle.y + normalY * clearance
+      moved = true
+    }
+    if (!moved) break
+  }
+  return constrained
+}
+
 function returnSegmentOpen(
   start: Point,
   end: Point,
@@ -257,6 +286,159 @@ function returnRoute(
   return simplified
 }
 
+function returnLead(
+  start: Point,
+  velocity: Point,
+  fishSize: number,
+  width: number,
+  obstacles: PondObstacleSpec[],
+): Point {
+  for (const seconds of [0.5, 0.36, 0.24, 0.14]) {
+    const lead = { x: start.x + velocity.x * seconds, y: start.y + velocity.y * seconds }
+    if (returnSegmentOpen(start, lead, fishSize, width, obstacles)) return lead
+  }
+  return { ...start }
+}
+
+function roundedReturnRoute(
+  route: Point[],
+  fishSize: number,
+  width: number,
+  obstacles: PondObstacleSpec[],
+): Point[] {
+  if (route.length < 3) return route
+  const rounded = [{ ...route[0] }]
+  const append = (point: Point) => {
+    if (Math.hypot(point.x - rounded.at(-1)!.x, point.y - rounded.at(-1)!.y) > 0.05) rounded.push(point)
+  }
+
+  for (let index = 1; index < route.length - 1; index++) {
+    const previous = route[index - 1]
+    const corner = route[index]
+    const next = route[index + 1]
+    const incoming = Math.hypot(corner.x - previous.x, corner.y - previous.y)
+    const outgoing = Math.hypot(next.x - corner.x, next.y - corner.y)
+    if (incoming < 0.5 || outgoing < 0.5) continue
+
+    let accepted: Point[] | null = null
+    const maximumTrim = Math.min(24 + fishSize * 4, incoming * 0.46, outgoing * 0.46)
+    for (const scale of [1, 0.72, 0.48, 0.28]) {
+      const trim = maximumTrim * scale
+      const before = {
+        x: corner.x + ((previous.x - corner.x) * trim) / incoming,
+        y: corner.y + ((previous.y - corner.y) * trim) / incoming,
+      }
+      const after = {
+        x: corner.x + ((next.x - corner.x) * trim) / outgoing,
+        y: corner.y + ((next.y - corner.y) * trim) / outgoing,
+      }
+      const candidate = [before]
+      for (let sample = 1; sample <= 10; sample++) {
+        const progress = sample / 10
+        const inverse = 1 - progress
+        candidate.push({
+          x: inverse * inverse * before.x + 2 * inverse * progress * corner.x + progress * progress * after.x,
+          y: inverse * inverse * before.y + 2 * inverse * progress * corner.y + progress * progress * after.y,
+        })
+      }
+      const path = [rounded.at(-1)!, ...candidate, next]
+      if (path.slice(1).every((point, pathIndex) =>
+        returnSegmentOpen(path[pathIndex], point, fishSize, width, obstacles),
+      )) {
+        accepted = candidate
+        break
+      }
+    }
+    if (accepted) accepted.forEach(append)
+    else append({ ...corner })
+  }
+  append({ ...route.at(-1)! })
+  return rounded
+}
+
+function softenedReturnRoute(
+  route: Point[],
+  fishSize: number,
+  width: number,
+  obstacles: PondObstacleSpec[],
+): Point[] {
+  const length = routeLength(route)
+  const samples = Math.max(4, Math.ceil(length / 3))
+  let softened = Array.from({ length: samples + 1 }, (_, index) => routePointAt(route, index / samples))
+
+  for (let iteration = 0; iteration < 14; iteration++) {
+    const candidate = softened.map((point, index) => {
+      if (index < 2 || index > softened.length - 3) return { ...point }
+      return constrainReturnPoint({
+        x: softened[index - 1].x * 0.24 + point.x * 0.52 + softened[index + 1].x * 0.24,
+        y: softened[index - 1].y * 0.24 + point.y * 0.52 + softened[index + 1].y * 0.24,
+      }, fishSize, width, obstacles)
+    })
+    if (!candidate.slice(1).every((point, index) =>
+      returnSegmentOpen(candidate[index], point, fishSize, width, obstacles),
+    )) break
+    softened = candidate
+  }
+  return softened
+}
+
+function returnTerminals(
+  runwayStart: Point,
+  loopVelocity: Point,
+  fishId: number,
+  fishSize: number,
+  width: number,
+  obstacles: PondObstacleSpec[],
+): Point[][] {
+  const speed = Math.hypot(loopVelocity.x, loopVelocity.y) || 1
+  const direction = { x: loopVelocity.x / speed, y: loopVelocity.y / speed }
+  const normal = { x: -direction.y, y: direction.x }
+  const preferredSide = fishId % 2 === 0 ? 1 : -1
+  const terminals: Point[][] = []
+  for (const side of [preferredSide, -preferredSide]) {
+    for (const radius of [Math.min(22, speed * 0.48), 16, 11]) {
+      const control = {
+        x: runwayStart.x - direction.x * radius,
+        y: runwayStart.y - direction.y * radius,
+      }
+      const curveStart = {
+        x: control.x + normal.x * radius * side,
+        y: control.y + normal.y * radius * side,
+      }
+      const approach = {
+        x: curveStart.x + normal.x * radius * 0.72 * side,
+        y: curveStart.y + normal.y * radius * 0.72 * side,
+      }
+      const guide = {
+        x: approach.x + normal.x * radius * 1.5 * side,
+        y: approach.y + normal.y * radius * 1.5 * side,
+      }
+      const terminal = [guide, approach, curveStart]
+      for (let sample = 1; sample <= 8; sample++) {
+        const progress = sample / 8
+        const inverse = 1 - progress
+        terminal.push({
+          x: inverse * inverse * curveStart.x + 2 * inverse * progress * control.x + progress * progress * runwayStart.x,
+          y: inverse * inverse * curveStart.y + 2 * inverse * progress * control.y + progress * progress * runwayStart.y,
+        })
+      }
+      if (
+        terminal.every(point => returnPointOpen(point, fishSize, width, obstacles)) &&
+        terminal.slice(1).every((point, index) =>
+          returnSegmentOpen(terminal[index], point, fishSize, width, obstacles),
+        )
+      ) terminals.push(terminal)
+    }
+  }
+
+  const entry = {
+    x: runwayStart.x - loopVelocity.x * 0.55,
+    y: runwayStart.y - loopVelocity.y * 0.55,
+  }
+  terminals.push([entry, { ...runwayStart }])
+  return terminals
+}
+
 function routeLength(route: Point[]): number {
   let length = 0
   for (let index = 1; index < route.length; index++) {
@@ -279,6 +461,107 @@ function routePointAt(route: Point[], progress: number): Point {
     remaining -= length
   }
   return { ...route.at(-1)! }
+}
+
+function separatedReturnRoute(
+  route: Point[],
+  laneOffset: number,
+  fishSize: number,
+  width: number,
+  obstacles: PondObstacleSpec[],
+): Point[] {
+  const length = routeLength(route)
+  const samples = Math.max(2, Math.ceil(length / 5))
+  const dense = Array.from({ length: samples + 1 }, (_, index) => routePointAt(route, index / samples))
+  if (Math.abs(laneOffset) < 0.1) return dense
+
+  for (const scale of [1, 0.68, 0.36]) {
+    const candidate = dense.map((point, index) => {
+      const progress = index / samples
+      if (index === 0 || index === samples) return { ...point }
+      const previous = dense[index - 1]
+      const next = dense[index + 1]
+      const tangentX = next.x - previous.x
+      const tangentY = next.y - previous.y
+      const tangentLength = Math.hypot(tangentX, tangentY) || 1
+      const smoothstep = (value: number) => value * value * (3 - 2 * value)
+      const envelope = smoothstep(Math.min(1, progress / 0.2))
+        * smoothstep(Math.min(1, (1 - progress) / 0.2))
+      const offset = laneOffset * scale * envelope
+      return {
+        x: point.x + (-tangentY / tangentLength) * offset,
+        y: point.y + (tangentX / tangentLength) * offset,
+      }
+    })
+    if (candidate.slice(1).every((point, index) =>
+      returnSegmentOpen(candidate[index], point, fishSize, width, obstacles),
+    )) return candidate
+  }
+  return dense
+}
+
+function phasedReturnProgress(progress: number, phase: number): number {
+  const bounded = Math.max(0, Math.min(1, progress))
+  return Math.max(0, Math.min(1, bounded + phase * Math.sin(Math.PI * bounded) ** 2))
+}
+
+function returnTimingControls(startDerivative: number, endDerivative: number): number[] {
+  const degree = Math.max(5, Math.ceil(startDerivative + endDerivative) + 1)
+  const first = Math.max(0, Math.min(1, startDerivative / degree))
+  const penultimate = Math.max(first, Math.min(1, 1 - endDerivative / degree))
+  return Array.from({ length: degree + 1 }, (_, index) => {
+    if (index === 0) return 0
+    if (index === degree) return 1
+    const progress = (index - 1) / Math.max(1, degree - 2)
+    return first + (penultimate - first) * progress
+  })
+}
+
+function timedReturnProgress(progress: number, controls: number[]): number {
+  const bounded = Math.max(0, Math.min(1, progress))
+  const values = [...controls]
+  for (let level = values.length - 1; level > 0; level--) {
+    for (let index = 0; index < level; index++) {
+      values[index] = values[index] * (1 - bounded) + values[index + 1] * bounded
+    }
+  }
+  return values[0]
+}
+
+function maximumRouteTurn(route: Point[]): number {
+  let maximum = 0
+  for (let index = 2; index < route.length; index++) {
+    const first = {
+      x: route[index - 1].x - route[index - 2].x,
+      y: route[index - 1].y - route[index - 2].y,
+    }
+    const second = {
+      x: route[index].x - route[index - 1].x,
+      y: route[index].y - route[index - 1].y,
+    }
+    const denominator = Math.hypot(first.x, first.y) * Math.hypot(second.x, second.y)
+    if (denominator < 0.01) continue
+    const cosine = Math.max(-1, Math.min(1, (first.x * second.x + first.y * second.y) / denominator))
+    maximum = Math.max(maximum, Math.acos(cosine))
+  }
+  return maximum
+}
+
+function routeClearance(
+  route: Point[],
+  phase: number,
+  others: Array<{ route: Point[]; phase: number }>,
+): number {
+  let minimum = Infinity
+  for (let sample = 2; sample <= 18; sample++) {
+    const progress = sample / 20
+    const point = routePointAt(route, phasedReturnProgress(progress, phase))
+    for (const other of others) {
+      const otherPoint = routePointAt(other.route, phasedReturnProgress(progress, other.phase))
+      minimum = Math.min(minimum, Math.hypot(point.x - otherPoint.x, point.y - otherPoint.y))
+    }
+  }
+  return minimum
 }
 
 export function plan(grid: Grid, seed: string, identities?: FishIdentity[], environment?: PondEnvironment): Plan {
@@ -504,6 +787,18 @@ export function plan(grid: Grid, seed: string, identities?: FishIdentity[], envi
     }
   }
 
+  const launchDuration = 0.45
+  while (t < launchDuration - 1e-9) {
+    sims.forEach(s => {
+      s.pos.x = s.f.start.x + s.loopVelocity.x * t
+      s.pos.y = s.f.start.y + s.loopVelocity.y * t
+      s.vel.x = s.loopVelocity.x
+      s.vel.y = s.loopVelocity.y
+    })
+    sample()
+    t += SIM_DT
+  }
+
   if (targets.length > 0) {
     while ((remaining.length > 0 || sims.some(s => s.target)) && t < 600) {
       sample()
@@ -541,24 +836,88 @@ export function plan(grid: Grid, seed: string, identities?: FishIdentity[], envi
   const feedEnd = t
   const minimumDuration = Math.max(24, (feedEnd + 1.5) / ACTIVE_FRACTION)
   const runwayDuration = 1.4
-  const returnRoutes = sims.map(s => {
-    const entry = {
-      x: s.runwayStart.x - s.loopVelocity.x * 0.55,
-      y: s.runwayStart.y - s.loopVelocity.y * 0.55,
+  const departureStarts = sims.map(s => ({
+    x: Math.max(24, Math.min(width - 24, s.pos.x + s.vel.x * 2.2)),
+    y: Math.max(24, Math.min(LAYOUT.height - 24, s.pos.y + s.vel.y * 2.2)),
+  }))
+  const departureStartTime = t
+  const departureEndTime = t + 1.1
+  while (t < departureEndTime - 1e-9) {
+    sample()
+    const progress = Math.max(0, Math.min(1, (t - departureStartTime) / 1.1))
+    const blendProgress = Math.max(0, Math.min(1, (progress - 0.18) / 0.82))
+    const blend = blendProgress * blendProgress * (3 - 2 * blendProgress)
+    sims.forEach((s, index) => step(
+      s,
+      departureStarts[index].x * (1 - blend) + s.runwayStart.x * blend,
+      departureStarts[index].y * (1 - blend) + s.runwayStart.y * blend,
+      true,
+    ))
+    t += SIM_DT
+  }
+  const returnPhases = sims.map(s => (s.f.id - (sims.length - 1) / 2) * 0.04)
+  const selectedRoutes: Array<{ route: Point[]; phase: number }> = []
+  const returnRoutes = sims.map((s, fishIndex) => {
+    const lead = returnLead(s.pos, s.vel, s.f.size, width, obstacles)
+    const baseLane = (s.f.id - (sims.length - 1) / 2) * 6
+    const laneOffsets = baseLane === 0
+      ? [0, 7, -7, 11, -11]
+      : [baseLane * 1.6, baseLane, baseLane * 0.55, -baseLane]
+    let best: { route: Point[]; score: number } | null = null
+
+    for (const terminal of returnTerminals(
+      s.runwayStart,
+      s.loopVelocity,
+      s.f.id,
+      s.f.size,
+      width,
+      obstacles,
+    )) {
+      const navigation = returnRoute(lead, terminal[0], s.f.size, width, obstacles)
+      const mergePoints = terminal.length > 2 ? terminal.slice(1, 3) : terminal.slice(1)
+      const merge = roundedReturnRoute(
+        [{ ...s.pos }, ...navigation, ...mergePoints],
+        s.f.size,
+        width,
+        obstacles,
+      )
+      const rounded = [...merge, ...terminal.slice(mergePoints.length + 1)]
+      for (const laneOffset of laneOffsets) {
+        const separated = separatedReturnRoute(rounded, laneOffset, s.f.size, width, obstacles)
+        const route = softenedReturnRoute(separated, s.f.size, width, obstacles)
+        const clearance = routeClearance(route, returnPhases[fishIndex], selectedRoutes)
+        const separationPenalty = Number.isFinite(clearance) ? Math.max(0, 16 - clearance) * 0.4 : 0
+        const score = maximumRouteTurn(route) + separationPenalty + routeLength(route) * 0.0002
+        if (!best || score < best.score) best = { route, score }
+      }
     }
-    return [...returnRoute(s.pos, entry, s.f.size, width, obstacles), { ...s.runwayStart }]
+
+    const route = best!.route
+    selectedRoutes.push({ route, phase: returnPhases[fishIndex] })
+    return route
   })
   const returnDuration = Math.max(
     2.4,
     minimumDuration - feedEnd,
-    ...returnRoutes.map((route, index) => routeLength(route) / (sims[index].maxSpeed * 0.7)),
+    ...returnRoutes.map((route, index) => routeLength(route) / (sims[index].maxSpeed * 0.66)),
   )
+  const returnTimings = sims.map((s, index) => {
+    const length = routeLength(returnRoutes[index]) || 1
+    return returnTimingControls(
+      (Math.hypot(s.vel.x, s.vel.y) * returnDuration) / length,
+      (Math.hypot(s.loopVelocity.x, s.loopVelocity.y) * returnDuration) / length,
+    )
+  })
   const returnStartTime = t
   const returnEndTime = returnStartTime + returnDuration
   while (t < returnEndTime - 1e-9) {
     const progress = (t - returnStartTime) / returnDuration
+    const returnProgresses = sims.map((_, index) => {
+      const phased = phasedReturnProgress(progress, returnPhases[index])
+      return timedReturnProgress(phased, returnTimings[index])
+    })
     sims.forEach((s, index) => {
-      const point = routePointAt(returnRoutes[index], progress)
+      const point = routePointAt(returnRoutes[index], returnProgresses[index])
       s.pos.x = point.x
       s.pos.y = point.y
       s.satiety = Math.max(0, s.satiety - SIM_DT * 0.62)
