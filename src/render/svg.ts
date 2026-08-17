@@ -150,6 +150,16 @@ interface TurtleChoreography {
   css: string
   effects: string
   delay: number
+  checkpoints: null | {
+    entry: number
+    mount: number
+    walk: number
+    brace: number
+    air: number
+    impact: number
+    splash: number
+    submerge: number
+  }
 }
 
 function turtleChoreography(
@@ -172,6 +182,7 @@ function turtleChoreography(
         `.snow-track{opacity:0}`,
       effects: '',
       delay: 0,
+      checkpoints: null,
     }
   }
   const percentAt = (x: number) => Math.max(0, Math.min(100, ((x + 40) / (width + 80)) * 100))
@@ -358,6 +369,7 @@ function turtleChoreography(
     css: motion + body + shadow + limbs + tracks + splashes,
     effects,
     delay: initialDelay,
+    checkpoints: { entry: entryEvent, mount, walk: walkStart, brace, air, impact, splash, submerge },
   }
 }
 
@@ -499,6 +511,12 @@ export function renderSVG(
   const turtleRestY = turtleFloe ? Math.min(turtleY - 6, turtleFloe.y - 2) : turtleY
   const turtleWalkingOnIce = Boolean(turtleFloe)
   const turtleDelay = `-${f1(turtleScene.delay)}s`
+  const turtleMotionAttributes = turtleScene.checkpoints
+    ? ` data-turtle-duration="${f1(turtleDuration)}" data-turtle-delay="${f1(turtleScene.delay)}"` +
+      Object.entries(turtleScene.checkpoints)
+        .map(([phase, at]) => ` data-turtle-${phase}="${at.toFixed(2)}"`)
+        .join('')
+    : ''
   const summerNightActivity = environment?.season === 'summer'
     ? environment.summerBloom * environment.nightDepth
     : 0
@@ -678,7 +696,7 @@ ${turtleScene.css}
       environment?.currentStrength ?? 0.5,
     ) +
     winterIce(width, theme, seed, environment?.iceCoverage ?? 0, hasTurtle) +
-    (hasTurtle ? turtleScene.effects + turtle(theme) : '') +
+    (hasTurtle ? turtleScene.effects + turtle(theme, turtleMotionAttributes) : '') +
     winterSnowfall(
       width,
       seed,

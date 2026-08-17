@@ -5,6 +5,7 @@ dist-qy/
 smoke/
 reference/
 .motion-regression/
+.key-moment-regression/
 .visual-regression/
 site/demo.js
 .wrangler/

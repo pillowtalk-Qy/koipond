@@ -297,6 +297,7 @@ npm run demo          # see your changes in dist/preview.html
 npm run typecheck
 npm test
 npm run verify:motion # physics, spacing and loop-seam checks
+npm run verify:key-moments # browser checks for firefly, snow, turtle and fish animation events
 npm run visual:check  # 32 season/phase/profile/viewport baselines
 ```
 

@@ -296,7 +296,7 @@ export function summerFireflies(width: number, seed: string, intensity: number, 
     const scale = index % 4 === 0 ? 1.08 + r() * 0.16 : 0.88 + r() * 0.16
     fireflies +=
       `<g transform="translate(${f1(x)} ${f1(y)})">` +
-      `<g class="firefly-flight" data-firefly-role="${visitingLotus ? 'lotus-visitor' : 'wanderer'}" style="--ffx1:${f1(x1)}px;--ffy1:${f1(y1)}px;--ffx2:${f1(x2)}px;--ffy2:${f1(y2)}px;--ffx3:${f1(x3)}px;--ffy3:${f1(y3)}px;animation-duration:${f1(duration)}s;animation-delay:-${f1(delay)}s">` +
+      `<g class="firefly-flight" data-firefly-index="${index}" data-firefly-role="${visitingLotus ? 'lotus-visitor' : 'wanderer'}" style="--ffx1:${f1(x1)}px;--ffy1:${f1(y1)}px;--ffx2:${f1(x2)}px;--ffy2:${f1(y2)}px;--ffx3:${f1(x3)}px;--ffy3:${f1(y3)}px;animation-duration:${f1(duration)}s;animation-delay:-${f1(delay)}s">` +
       `<g transform="scale(${f1(scale)})">` +
       `<g class="firefly-glow" style="animation-duration:${f1(pulse)}s;animation-delay:-${f1(delay * 0.37)}s">` +
       `<circle r="5.2" fill="#dfff75" opacity="0.09"/>` +
@@ -465,13 +465,13 @@ export function winterSnowfall(
         ? `<path d="M-1.7 0 H1.7 M0 -1.7 V1.7" fill="none" stroke="#eefcff" stroke-width="0.6" stroke-linecap="round"/><circle r="0.6" fill="#ffffff"/>`
         : `<circle r="1.12" fill="#e8f9fc"/>`
     flakes +=
-      `<g data-snow-depth="${depth}" data-snow-landing="${landsOnIce ? 'ice' : 'water'}" transform="translate(${f1(x)} 0) scale(${f1(scale)})">` +
+      `<g data-snow-index="${index}" data-snow-depth="${depth}" data-snow-landing="${landsOnIce ? 'ice' : 'water'}" transform="translate(${f1(x)} 0)">` +
       `<g class="snowfall" style="--snow-x1:${f1(x1)}px;--snow-y1:${f1(landingY * 0.3)}px;--snow-x2:${f1(x2)}px;--snow-y2:${f1(landingY * 0.66)}px;--snow-x3:${f1(drift)}px;--snow-y3:${f1(landingY)}px;--snow-opacity:${opacity.toFixed(2)};animation-duration:${f1(duration)}s;animation-delay:-${f1(delay)}s">` +
-      flake +
+      `<g transform="scale(${f1(scale)})">${flake}</g>` +
       `</g></g>`
     landings += landsOnIce
-      ? `<g transform="translate(${f1(landingX)} ${f1(landingY)}) scale(${f1(scale)})"><circle class="snow-settle" r="1.2" fill="#f5fdff" style="animation-duration:${f1(duration)}s;animation-delay:-${f1(delay)}s"/></g>`
-      : `<circle class="snow-melt" cx="${f1(landingX)}" cy="${f1(landingY)}" r="3.4" fill="none" stroke="#dff8ff" stroke-width="0.65" style="animation-duration:${f1(duration)}s;animation-delay:-${f1(delay)}s"/>`
+      ? `<g data-snow-index="${index}" data-snow-effect="ice" transform="translate(${f1(landingX)} ${f1(landingY)}) scale(${f1(scale)})"><circle class="snow-settle" r="1.2" fill="#f5fdff" style="animation-duration:${f1(duration)}s;animation-delay:-${f1(delay)}s"/></g>`
+      : `<circle data-snow-index="${index}" data-snow-effect="water" class="snow-melt" cx="${f1(landingX)}" cy="${f1(landingY)}" r="3.4" fill="none" stroke="#dff8ff" stroke-width="0.65" style="animation-duration:${f1(duration)}s;animation-delay:-${f1(delay)}s"/>`
   }
   return `<g data-seasonal-part="winter-snowfall" opacity="${f1(Math.min(0.96, intensity * 0.96))}">${landings}${flakes}</g>`
 }
@@ -554,11 +554,11 @@ export function ambientRipples(width: number, theme: Theme, r: () => number, cou
   return out
 }
 
-export function turtle(theme: Theme): string {
+export function turtle(theme: Theme, motionAttributes = ''): string {
   const flipper = (name: string, x: number, y: number, deg: number, delay: number) =>
     `<g transform="rotate(${deg} ${x} ${y})"><g class="paddle-phase ${name}"><ellipse class="paddle" style="animation-delay:${delay}s" cx="${x}" cy="${y}" rx="4.4" ry="1.9" fill="${theme.turtleSkin}"/></g></g>`
   return (
-    `<g class="turtle">` +
+    `<g class="turtle" data-pond-part="turtle"${motionAttributes}>` +
     `<g class="turtle-scale" transform="scale(1.1)">` +
     `<ellipse class="turtle-shadow" cx="2.5" cy="4" rx="11.5" ry="10" fill="rgba(0,20,25,0.2)"/>` +
     `<g class="turtle-body">` +

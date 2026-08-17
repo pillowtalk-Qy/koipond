@@ -27,6 +27,7 @@
     "gen": "tsx src/cli.ts",
     "verify:state": "tsx src/verify.ts",
     "verify:motion": "node --import tsx scripts/motion-regression.ts --metrics-only",
+    "verify:key-moments": "node --import tsx scripts/key-moment-regression.ts",
     "capture:motion": "node --import tsx scripts/motion-regression.ts",
     "visual:check": "node --import tsx scripts/visual-regression.ts",
     "visual:update": "node --import tsx scripts/visual-regression.ts --update",
