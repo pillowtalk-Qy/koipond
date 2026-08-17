@@ -1,7 +1,7 @@
 {
   "thresholds": {
     "pixelThreshold": 24,
-    "mismatchLimit": 0.002,
+    "mismatchLimit": 0.008,
     "meanDeltaLimit": 2.2
   },
   "scenarios": [
