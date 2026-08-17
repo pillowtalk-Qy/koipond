@@ -6,3 +6,5 @@ smoke/
 reference/
 .motion-regression/
 site/demo.js
+.wrangler/
+.dev.vars

@@ -2,6 +2,6 @@ import { defineConfig } from 'vitest/config'
 
 export default defineConfig({
   test: {
-    include: ['test/**/*.test.ts'],
+    exclude: ['worker/**/*.test.ts', 'node_modules/**'],
   },
 })

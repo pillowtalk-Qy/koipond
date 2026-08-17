@@ -76,6 +76,12 @@ calendar cannot feed the fish twice; only newly visible energy changes the state
 contains SHA-256 digests of its source calendar, complete state and preceding revision. The same
 provenance is embedded in the SVG's `<metadata>` element.
 
+The online explorer reads only GitHub's public contribution calendar through this project's own
+Cloudflare Worker, rather than a third-party contribution API. The Worker sets no cookies, emits no
+application logs and stores no visitor identifiers; it keeps only a 15-minute edge cache of the public
+calendar response. Its source and runtime tests live in [`worker/`](worker/), and the production health
+endpoint is [`koipond-contributions.intentflow-inspector.workers.dev/health`](https://koipond-contributions.intentflow-inspector.workers.dev/health).
+
 Everything is baked into a self-contained animated SVG (CSS keyframes, no JavaScript), so it works
 anywhere GitHub renders images, including profile READMEs. Because GitHub does not execute JavaScript
 inside README images, the Action refreshes the solar-time snapshot every hour; the animation itself
@@ -232,8 +238,8 @@ npm run verify:state -- pond-state.json previous-pond-state.json
 
 ## How it works
 
-1. **Data**: GitHub GraphQL `contributionCalendar`, the public contributions page (no token), or a
-   deterministic demo generator.
+1. **Data**: GitHub GraphQL `contributionCalendar`, the public contributions page (no token), the
+   first-party Worker used by the online explorer, or a deterministic demo generator.
 2. **State** (`src/state.ts`): compares the public calendar with the previous published snapshot,
    preserves fish identity and credits only new energy. Canonical JSON and SHA-256 bind the source
    calendar, complete state and previous revision into an independently verifiable chain.

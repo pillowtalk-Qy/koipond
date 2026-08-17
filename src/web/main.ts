@@ -5,6 +5,7 @@ import { THEMES, themeForEnvironment } from '../render/palette'
 import { renderSVG } from '../render/svg'
 import type { Grid, Plan } from '../types'
 
+const CONTRIBUTION_API = 'https://koipond-contributions.intentflow-inspector.workers.dev'
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T
 
 const form = $<HTMLFormElement>('form')
@@ -72,7 +73,7 @@ interface ApiResponse {
 }
 
 async function fetchGrid(user: string): Promise<Grid> {
-  const res = await fetch(`https://github-contributions-api.jogruber.de/v4/${encodeURIComponent(user)}?y=last`)
+  const res = await fetch(`${CONTRIBUTION_API}/v1/contributions/${encodeURIComponent(user)}`)
   if (!res.ok) throw new Error(res.status === 404 ? `User not found: ${user}` : `Contribution API responded ${res.status}`)
   const json = (await res.json()) as ApiResponse
   if (!json.contributions?.length) throw new Error(`No contributions found for ${user}`)
