@@ -50,7 +50,9 @@ jobs:
           publish_dir: ./dist
 `
 
-const snippetFor = (user: string) => `<img alt="koipond" src="https://raw.githubusercontent.com/${user}/${user}/output/koipond.svg">
+const snippetFor = (user: string) => `<a href="https://pillowtalk-qy.github.io/koipond/?user=${encodeURIComponent(user)}">
+  <img alt="koipond" src="https://raw.githubusercontent.com/${user}/${user}/output/koipond.svg">
+</a>
 <br>
 <sub>This pond follows Hong Kong time and season. Contributions feed it; its fish remember. · <a href="https://raw.githubusercontent.com/${user}/${user}/output/pond-state.json">verify state</a></sub>`
 
@@ -84,6 +86,8 @@ let active: ViewMode = 'auto'
 let currentGrid: Grid | null = null
 let currentPlan: Plan | null = null
 let currentUser = ''
+let pondSwapTimer: number | undefined
+let pondTransitionRevision = 0
 
 const pad = (value: number) => String(value).padStart(2, '0')
 
@@ -130,9 +134,7 @@ function renderAuto() {
   }
 }
 
-function show(mode: ViewMode) {
-  active = mode
-  if (mode === 'auto') renderAuto()
+function mountPond(mode: ViewMode) {
   pond.innerHTML = svgs[mode]
   const svg = pond.querySelector('svg')
   if (svg) {
@@ -141,10 +143,44 @@ function show(mode: ViewMode) {
   }
   download.href = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svgs[mode])))}`
   download.download = `koipond-${mode}.svg`
+}
+
+function show(mode: ViewMode, animate = false) {
+  active = mode
+  if (mode === 'auto') renderAuto()
   for (const b of tabs.querySelectorAll('button')) {
     b.classList.toggle('on', b.dataset.theme === mode)
   }
   document.body.classList.toggle('fixed-environment', mode !== 'auto')
+
+  const revision = ++pondTransitionRevision
+  if (pondSwapTimer !== undefined) window.clearTimeout(pondSwapTimer)
+  pond.classList.remove('pond-leaving', 'pond-entering')
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  const shouldTransition = animate && Boolean(pond.querySelector('svg')) && !reduceMotion
+  if (!shouldTransition) {
+    pond.removeAttribute('aria-busy')
+    mountPond(mode)
+    return
+  }
+
+  pond.setAttribute('aria-busy', 'true')
+  void pond.offsetWidth
+  pond.classList.add('pond-leaving')
+  pondSwapTimer = window.setTimeout(() => {
+    if (revision !== pondTransitionRevision) return
+    pondSwapTimer = undefined
+    mountPond(mode)
+    pond.classList.remove('pond-leaving')
+    pond.classList.add('pond-entering')
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        if (revision !== pondTransitionRevision) return
+        pond.classList.remove('pond-entering')
+        pond.removeAttribute('aria-busy')
+      })
+    })
+  }, 210)
 }
 
 async function generate(user: string) {
@@ -190,19 +226,19 @@ document.querySelectorAll<HTMLButtonElement>('.chip').forEach(chip => {
 
 tabs.addEventListener('click', e => {
   const b = (e.target as HTMLElement).closest('button')
-  if (b?.dataset.theme) show(b.dataset.theme as ViewMode)
+  if (b?.dataset.theme) show(b.dataset.theme as ViewMode, true)
 })
 
 live.addEventListener('change', () => {
   if (live.checked) updateLiveInputs()
-  if (active === 'auto') show('auto')
+  if (active === 'auto') show('auto', true)
   syncURL()
 })
 
 for (const control of [date, time]) {
   control.addEventListener('input', () => {
     live.checked = false
-    if (active === 'auto') show('auto')
+    if (active === 'auto') show('auto', true)
     syncURL()
   })
 }
@@ -212,7 +248,7 @@ document.querySelectorAll<HTMLButtonElement>('.season-jump').forEach(button => {
     const year = date.value.slice(0, 4) || String(momentAtTimezone(new Date()).year)
     date.value = `${year}-${button.dataset.monthDay}`
     live.checked = false
-    show('auto')
+    show('auto', true)
     syncURL()
   })
 })
@@ -221,7 +257,7 @@ document.querySelectorAll<HTMLButtonElement>('.phase-jump').forEach(button => {
   button.addEventListener('click', () => {
     time.value = button.dataset.time ?? time.value
     live.checked = false
-    show('auto')
+    show('auto', true)
     syncURL()
   })
 })

@@ -107,7 +107,7 @@ jobs:
   generate:
     runs-on: ubuntu-latest
     steps:
-      - uses: pillowtalk-Qy/koipond@281965d0e218900149d0f72a25b8457c24a0ea27
+      - uses: pillowtalk-Qy/koipond@a2e5594062ea6411f4a67180c0d913c9adbb961b
         with:
           github_user_name: ${{ github.repository_owner }}
           outputs: |
@@ -122,7 +122,9 @@ jobs:
 Then embed the generated pond in your README:
 
 ```html
-<img alt="koipond" src="https://raw.githubusercontent.com/<user>/<repo>/output/koipond.svg">
+<a href="https://pillowtalk-qy.github.io/koipond/?user=<user>">
+  <img alt="koipond" src="https://raw.githubusercontent.com/<user>/<repo>/output/koipond.svg">
+</a>
 <br>
 <sub>This pond follows Hong Kong time and season. Contributions feed it; its fish remember. · <a href="https://raw.githubusercontent.com/<user>/<repo>/output/pond-state.json">verify state</a></sub>
 ```
