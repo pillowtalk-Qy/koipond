@@ -522,7 +522,11 @@ export function renderSVG(
 .summer-lotus-bud{transform-box:fill-box;transform-origin:center;animation:summer-lotus-bud 5.4s ease-in-out infinite alternate}
 .firefly-flight{animation-name:firefly-flight;animation-timing-function:linear;animation-iteration-count:infinite}
 .firefly-glow{transform-box:fill-box;transform-origin:center;animation-name:firefly-glow;animation-timing-function:ease-in-out;animation-iteration-count:infinite}
+.lotus-visit{transform-box:fill-box;transform-origin:center;animation-name:lotus-visit;animation-timing-function:ease-out;animation-iteration-count:infinite}
 .snowfall{animation-name:snowfall;animation-timing-function:linear;animation-iteration-count:infinite}
+.snow-melt,.snow-settle{transform-box:fill-box;transform-origin:center;animation-timing-function:ease-out;animation-iteration-count:infinite}
+.snow-melt{animation-name:snow-melt}
+.snow-settle{animation-name:snow-settle}
 .sun-path{transform-box:fill-box;transform-origin:center;animation:sun-path 12s ease-in-out infinite alternate}
 .moon-path{transform-box:fill-box;transform-origin:center;animation:moon-path 10.5s ease-in-out infinite alternate}
 .moon-path-b{animation-direction:alternate-reverse;animation-duration:13s}
@@ -548,7 +552,10 @@ export function renderSVG(
 @keyframes summer-lotus-bud{from{transform:scale(0.99)}to{transform:scale(1.01)}}
 @keyframes firefly-flight{0%,100%{transform:translate(0,0)}29%{transform:translate(var(--ffx1),var(--ffy1))}64%{transform:translate(var(--ffx2),var(--ffy2))}82%{transform:translate(var(--ffx3),var(--ffy3))}}
 @keyframes firefly-glow{0%,100%{transform:scale(0.76);opacity:0.34}28%{transform:scale(1.06);opacity:1}52%{transform:scale(0.82);opacity:0.4}76%{transform:scale(1);opacity:0.9}}
-@keyframes snowfall{0%{transform:translate(0,-14px) rotate(0);opacity:0}7%{opacity:var(--snow-opacity)}28%{transform:translate(var(--snow-x1),52px) rotate(68deg);opacity:var(--snow-opacity)}58%{transform:translate(var(--snow-x2),116px) rotate(148deg);opacity:var(--snow-opacity)}91%{opacity:var(--snow-opacity)}100%{transform:translate(var(--snow-x3),212px) rotate(250deg);opacity:0}}
+@keyframes lotus-visit{0%,54%,100%{transform:scale(0.35);opacity:0}62%{transform:scale(0.72);opacity:0.32}76%{transform:scale(1.45);opacity:0}}
+@keyframes snowfall{0%{transform:translate(0,-14px) rotate(0);opacity:0}7%{opacity:var(--snow-opacity)}28%{transform:translate(var(--snow-x1),var(--snow-y1)) rotate(68deg);opacity:var(--snow-opacity)}58%{transform:translate(var(--snow-x2),var(--snow-y2)) rotate(148deg);opacity:var(--snow-opacity)}78%{transform:translate(var(--snow-x3),var(--snow-y3)) rotate(212deg);opacity:var(--snow-opacity)}82%,100%{transform:translate(var(--snow-x3),var(--snow-y3)) rotate(212deg);opacity:0}}
+@keyframes snow-melt{0%,76%{transform:scale(0.2);opacity:0}80%{transform:scale(0.5);opacity:0.34}94%,100%{transform:scale(2.6);opacity:0}}
+@keyframes snow-settle{0%,76%{transform:scale(0.25);opacity:0}81%{transform:scale(0.72);opacity:0.9}92%{transform:scale(1);opacity:0.72}100%{transform:scale(1.08);opacity:0}}
 @keyframes sun-path{from{transform:translateX(${f1(-lightDrift)}px) scale(0.98)}to{transform:translateX(${f1(lightDrift)}px) scale(1.02)}}
 @keyframes moon-path{from{transform:translateX(${f1(-moonDrift)}px) scale(0.94,0.98);opacity:0.72}to{transform:translateX(${f1(moonDrift)}px) scale(1.08,1.03);opacity:1}}
 @keyframes paddle{from{transform:rotate(14deg)}to{transform:rotate(-14deg)}}
@@ -563,7 +570,7 @@ export function renderSVG(
 @keyframes ice-glint{from{opacity:0.56}to{opacity:0.9}}
 ${turtleScene.css}
 @keyframes night{0%,91%{opacity:0}95%,97.5%{opacity:${theme.night}}100%{opacity:0}}
-@media (prefers-reduced-motion:reduce){*{animation:none!important}.rp,.tw,.mo,.ar,.night,.turtle-splash,.turtle-impact,.turtle-droplet,.snowfall{opacity:0!important}.floor{opacity:var(--floor-opacity,0.28)!important}.current{opacity:${currentPeak.toFixed(3)}}.ca{opacity:${causticOpacity.toFixed(3)}}.ray{opacity:${rayPeak.toFixed(3)}}.maple{transform:none;opacity:0.9}.firefly-glow{opacity:0.55}.snow-track{opacity:0.28!important}.turtle{transform:translate(${f1(turtleRestX)}px,${f1(turtleRestY)}px)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}.rp,.tw,.mo,.ar,.night,.turtle-splash,.turtle-impact,.turtle-droplet,.snowfall,.snow-melt,.snow-settle,.lotus-visit{opacity:0!important}.floor{opacity:var(--floor-opacity,0.28)!important}.current{opacity:${currentPeak.toFixed(3)}}.ca{opacity:${causticOpacity.toFixed(3)}}.ray{opacity:${rayPeak.toFixed(3)}}.maple{transform:none;opacity:0.9}.firefly-glow{opacity:0.55}.snow-track{opacity:0.28!important}.turtle{transform:translate(${f1(turtleRestX)}px,${f1(turtleRestY)}px)}}
 `
 
   const css = base + bucketCSS + fishKeyframes(plan, animationDuration)
@@ -661,7 +668,7 @@ ${turtleScene.css}
         )}</g>`
       : '') +
     plan.fishes.map(f => `<g>${fishSVG(f, theme, staticTime, timelineDuration, animationDuration)}</g>`).join('') +
-    summerFireflies(width, seed, summerNightActivity) +
+    summerFireflies(width, seed, summerNightActivity, lotusOpenness) +
     autumnMapleLeaves(
       width,
       theme,
@@ -676,6 +683,7 @@ ${turtleScene.css}
       width,
       seed,
       winterNightActivity,
+      environment?.iceCoverage ?? 0,
       environment?.currentDirection ?? 1,
       environment?.currentStrength ?? 0.5,
     ) +

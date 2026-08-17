@@ -243,6 +243,15 @@ function smallLotus(theme: Theme, scale: number, delay: number, openness: number
   )
 }
 
+function summerBloomSites(width: number, seed: string) {
+  const pads = lilyPadLayout(width, seed)
+  return [
+    { x: pads[0].x + 1, y: pads[0].y - 2, scale: 0.72 },
+    { x: pads[1].x + 2, y: pads[1].y - 2, scale: 0.66 },
+    { x: pads[2].x - 4, y: pads[2].y + 1, scale: 0.96 },
+  ]
+}
+
 export function summerBlooms(
   width: number,
   theme: Theme,
@@ -251,52 +260,56 @@ export function summerBlooms(
   openness = 1,
 ): string {
   if (intensity < 0.08) return ''
-  const pads = lilyPadLayout(width, seed)
-  const blooms = [
-    { pad: pads[0], dx: 1, dy: -2, scale: 0.72 },
-    { pad: pads[1], dx: 2, dy: -2, scale: 0.66 },
-    { pad: pads[2], dx: -4, dy: 1, scale: 0.96 },
-  ]
-    .map(({ pad, dx, dy, scale }, index) =>
-      `<g transform="translate(${f1(pad.x + dx)} ${f1(pad.y + dy)})">${smallLotus(theme, scale, index * 1.7, openness)}</g>`,
+  const blooms = summerBloomSites(width, seed)
+    .map(({ x, y, scale }, index) =>
+      `<g transform="translate(${f1(x)} ${f1(y)})">${smallLotus(theme, scale, index * 1.7, openness)}</g>`,
     )
     .join('')
   return `<g data-seasonal-part="summer-bloom" opacity="${f1(Math.min(1, intensity * 0.94))}">${blooms}</g>`
 }
 
-export function summerFireflies(width: number, seed: string, intensity: number): string {
+export function summerFireflies(width: number, seed: string, intensity: number, lotusOpenness = 1): string {
   if (intensity < 0.08) return ''
   const r = rng(`fireflies:${seed}`)
-  const pads = lilyPadLayout(width, seed)
+  const blooms = summerBloomSites(width, seed)
   const count = Math.round(7 + Math.min(1, intensity) * 4)
   let fireflies = ''
+  let visits = ''
   for (let index = 0; index < count; index++) {
-    const pad = pads[index % pads.length]
+    const bloom = blooms[index % blooms.length]
+    const visitingLotus = index < Math.ceil(count * 0.55)
     const angle = r() * Math.PI * 2
-    const distance = 20 + r() * 52
-    const x = Math.max(18, Math.min(width - 18, pad.x + Math.cos(angle) * distance))
-    const y = Math.max(18, Math.min(LAYOUT.height - 24, pad.y + Math.sin(angle) * distance * 0.52))
-    const x1 = (r() - 0.5) * 26
-    const y1 = (r() - 0.5) * 14
-    const x2 = x1 + (r() - 0.5) * 22
-    const y2 = y1 + (r() - 0.5) * 15
-    const x3 = (r() - 0.5) * 20
-    const y3 = (r() - 0.5) * 12
+    const distance = (visitingLotus ? 24 : 34) + r() * (visitingLotus ? 22 : 48)
+    const x = Math.max(18, Math.min(width - 18, bloom.x + Math.cos(angle) * distance))
+    const y = Math.max(18, Math.min(LAYOUT.height - 24, bloom.y + Math.sin(angle) * distance * 0.52))
+    const targetX = bloom.x - x + (r() - 0.5) * (5 + (1 - lotusOpenness) * 5)
+    const targetY = bloom.y - y + (r() - 0.5) * 4
+    const x1 = visitingLotus ? targetX * 0.46 + (r() - 0.5) * 14 : (r() - 0.5) * 26
+    const y1 = visitingLotus ? targetY * 0.38 + (r() - 0.5) * 10 : (r() - 0.5) * 14
+    const x2 = visitingLotus ? targetX : x1 + (r() - 0.5) * 22
+    const y2 = visitingLotus ? targetY : y1 + (r() - 0.5) * 15
+    const x3 = visitingLotus ? targetX * 0.35 + (r() - 0.5) * 18 : (r() - 0.5) * 20
+    const y3 = visitingLotus ? targetY * 0.28 + (r() - 0.5) * 10 : (r() - 0.5) * 12
     const duration = 7.5 + r() * 5
     const delay = r() * duration
     const pulse = 1.5 + r() * 1.6
     const scale = index % 4 === 0 ? 1.08 + r() * 0.16 : 0.88 + r() * 0.16
     fireflies +=
       `<g transform="translate(${f1(x)} ${f1(y)})">` +
-      `<g class="firefly-flight" style="--ffx1:${f1(x1)}px;--ffy1:${f1(y1)}px;--ffx2:${f1(x2)}px;--ffy2:${f1(y2)}px;--ffx3:${f1(x3)}px;--ffy3:${f1(y3)}px;animation-duration:${f1(duration)}s;animation-delay:-${f1(delay)}s">` +
+      `<g class="firefly-flight" data-firefly-role="${visitingLotus ? 'lotus-visitor' : 'wanderer'}" style="--ffx1:${f1(x1)}px;--ffy1:${f1(y1)}px;--ffx2:${f1(x2)}px;--ffy2:${f1(y2)}px;--ffx3:${f1(x3)}px;--ffy3:${f1(y3)}px;animation-duration:${f1(duration)}s;animation-delay:-${f1(delay)}s">` +
       `<g transform="scale(${f1(scale)})">` +
       `<g class="firefly-glow" style="animation-duration:${f1(pulse)}s;animation-delay:-${f1(delay * 0.37)}s">` +
       `<circle r="5.2" fill="#dfff75" opacity="0.09"/>` +
       `<circle r="2.5" fill="#eaff8b" opacity="0.24"/>` +
       `<circle r="1" fill="#fbffc9"/>` +
       `</g></g></g></g>`
+    if (visitingLotus) {
+      visits +=
+        `<circle class="lotus-visit" data-lotus-visit="${index}" cx="${f1(bloom.x)}" cy="${f1(bloom.y)}" r="${f1(4.2 + lotusOpenness * 2.2)}" ` +
+        `fill="none" stroke="#eaff8b" stroke-width="0.7" style="animation-duration:${f1(duration)}s;animation-delay:-${f1(delay)}s"/>`
+    }
   }
-  return `<g data-seasonal-part="summer-fireflies" opacity="${f1(Math.min(0.96, intensity * 0.96))}">${fireflies}</g>`
+  return `<g data-seasonal-part="summer-fireflies" opacity="${f1(Math.min(0.96, intensity * 0.96))}">${visits}${fireflies}</g>`
 }
 
 const MAPLE_PATH =
@@ -400,6 +413,7 @@ export function winterSnowfall(
   width: number,
   seed: string,
   intensity: number,
+  iceCoverage = 0,
   currentDirection = 1,
   currentStrength = 0.5,
 ): string {
@@ -407,10 +421,35 @@ export function winterSnowfall(
   const r = rng(`snowfall:${seed}`)
   const count = Math.round(18 + Math.min(1, intensity) * 12)
   const wind = currentDirection * (11 + currentStrength * 20)
+  const floes = iceFloeLayout(width, seed, iceCoverage)
+  const onFloe = (x: number, y: number) => floes.some(floe => {
+    const angle = (-floe.rotation * Math.PI) / 180
+    const dx = x - floe.x
+    const dy = y - floe.y
+    const localX = dx * Math.cos(angle) - dy * Math.sin(angle)
+    const localY = dx * Math.sin(angle) + dy * Math.cos(angle)
+    return (localX / floe.rx) ** 2 + (localY / floe.ry) ** 2 <= 0.72
+  })
   let flakes = ''
+  let landings = ''
   for (let index = 0; index < count; index++) {
-    const x = 16 + r() * (width - 32)
-    const drift = wind + (r() - 0.5) * 22
+    const targetFloe = floes.length > 0 && index % 5 === 0 ? floes[index % floes.length] : undefined
+    let landingX = targetFloe
+      ? targetFloe.x + (r() - 0.5) * targetFloe.rx * 0.7
+      : 18 + r() * (width - 36)
+    let landingY = targetFloe
+      ? targetFloe.y + (r() - 0.5) * targetFloe.ry * 0.52
+      : 28 + r() * (LAYOUT.height - 50)
+    if (!targetFloe) {
+      for (let attempt = 0; attempt < 5 && onFloe(landingX, landingY); attempt++) {
+        landingX = 18 + r() * (width - 36)
+        landingY = 28 + r() * (LAYOUT.height - 50)
+      }
+    }
+    const landsOnIce = onFloe(landingX, landingY)
+    const desiredDrift = wind + (r() - 0.5) * 22
+    const x = Math.max(8, Math.min(width - 8, landingX - desiredDrift))
+    const drift = landingX - x
     const x1 = drift * 0.28 + (r() - 0.5) * 11
     const x2 = drift * 0.65 + (r() - 0.5) * 12
     const near = index % 6 === 0
@@ -426,12 +465,15 @@ export function winterSnowfall(
         ? `<path d="M-1.7 0 H1.7 M0 -1.7 V1.7" fill="none" stroke="#eefcff" stroke-width="0.6" stroke-linecap="round"/><circle r="0.6" fill="#ffffff"/>`
         : `<circle r="1.12" fill="#e8f9fc"/>`
     flakes +=
-      `<g data-snow-depth="${depth}" transform="translate(${f1(x)} 0) scale(${f1(scale)})">` +
-      `<g class="snowfall" style="--snow-x1:${f1(x1)}px;--snow-x2:${f1(x2)}px;--snow-x3:${f1(drift)}px;--snow-opacity:${opacity.toFixed(2)};animation-duration:${f1(duration)}s;animation-delay:-${f1(delay)}s">` +
+      `<g data-snow-depth="${depth}" data-snow-landing="${landsOnIce ? 'ice' : 'water'}" transform="translate(${f1(x)} 0) scale(${f1(scale)})">` +
+      `<g class="snowfall" style="--snow-x1:${f1(x1)}px;--snow-y1:${f1(landingY * 0.3)}px;--snow-x2:${f1(x2)}px;--snow-y2:${f1(landingY * 0.66)}px;--snow-x3:${f1(drift)}px;--snow-y3:${f1(landingY)}px;--snow-opacity:${opacity.toFixed(2)};animation-duration:${f1(duration)}s;animation-delay:-${f1(delay)}s">` +
       flake +
       `</g></g>`
+    landings += landsOnIce
+      ? `<g transform="translate(${f1(landingX)} ${f1(landingY)}) scale(${f1(scale)})"><circle class="snow-settle" r="1.2" fill="#f5fdff" style="animation-duration:${f1(duration)}s;animation-delay:-${f1(delay)}s"/></g>`
+      : `<circle class="snow-melt" cx="${f1(landingX)}" cy="${f1(landingY)}" r="3.4" fill="none" stroke="#dff8ff" stroke-width="0.65" style="animation-duration:${f1(duration)}s;animation-delay:-${f1(delay)}s"/>`
   }
-  return `<g data-seasonal-part="winter-snowfall" opacity="${f1(Math.min(0.96, intensity * 0.96))}">${flakes}</g>`
+  return `<g data-seasonal-part="winter-snowfall" opacity="${f1(Math.min(0.96, intensity * 0.96))}">${landings}${flakes}</g>`
 }
 
 export function lotus(

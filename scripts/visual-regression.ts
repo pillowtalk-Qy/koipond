@@ -17,7 +17,7 @@ const outputArgument = process.argv.find(argument => argument.startsWith('--out=
 const outputDirectory = join(root, outputArgument?.slice('--out='.length) || '.visual-regression')
 const update = process.argv.includes('--update')
 const pixelThreshold = 24
-const mismatchLimit = 0.008
+const mismatchLimit = 0.002
 const meanDeltaLimit = 2.2
 
 const moments: Array<{ date: string; season: PondSeason }> = [

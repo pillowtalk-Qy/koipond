@@ -59,11 +59,13 @@ The graph does not just feed the fish, it shapes the ecosystem:
   propagate through broad water bands, caustics, floor-shadow drift, motes, lily-pad sway and autumn
   leaves instead of giving each layer an unrelated animation.
 - **The year moves continuously through four physical ecologies**: spring keeps the original pond,
-  summer fills its lily pads with day- and night-blooming flowers while fireflies cross the night,
+  summer fills its lily pads with day- and night-blooming flowers while fireflies visit individual
+  lotus flowers and leave a synchronized glint,
   and individual maple leaves cross the autumn surface
   with their own drift, rotation and wake. Winter ice and snow become real obstacles that fish route
   around; a streak turtle slows at the edge, climbs onto the ice, leaves tracks step by step and
-  splashes back into the water instead of passing beneath it; winter nights add layered drifting snow.
+  splashes back into the water instead of passing beneath it; winter snow settles briefly on those
+  same ice shapes but melts into a ripple when it lands on open water.
 
 This `original-plus` branch deliberately keeps the original composition and art direction. Its changes
 are behavioral: the same contribution graph now produces a more causal ecosystem instead of adding
