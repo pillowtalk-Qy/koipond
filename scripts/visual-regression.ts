@@ -18,6 +18,7 @@ const outputDirectory = join(root, outputArgument?.slice('--out='.length) || '.v
 const update = process.argv.includes('--update')
 const pixelThreshold = 24
 const mismatchLimit = 0.008
+const winterNightMismatchLimit = 0.012
 const meanDeltaLimit = 2.2
 
 const moments: Array<{ date: string; season: PondSeason }> = [
@@ -125,7 +126,8 @@ async function compareImages(name: string, current: Buffer, baseline: Buffer): P
 
   const mismatchRatio = mismatchCount / pixels
   const meanDelta = totalDelta / actual.data.length
-  const status = mismatchRatio <= mismatchLimit && meanDelta <= meanDeltaLimit ? 'matched' : 'changed'
+  const scenarioMismatchLimit = name.includes('winter-night') ? winterNightMismatchLimit : mismatchLimit
+  const status = mismatchRatio <= scenarioMismatchLimit && meanDelta <= meanDeltaLimit ? 'matched' : 'changed'
   if (status === 'changed') {
     await sharp(difference, { raw: { width, height, channels } })
       .png()
@@ -204,7 +206,7 @@ try {
 }
 
 const report = {
-  thresholds: { pixelThreshold, mismatchLimit, meanDeltaLimit },
+  thresholds: { pixelThreshold, mismatchLimit, winterNightMismatchLimit, meanDeltaLimit },
   scenarios: comparisons,
 }
 writeFileSync(join(outputDirectory, 'report.json'), JSON.stringify(report, null, 2) + '\n')

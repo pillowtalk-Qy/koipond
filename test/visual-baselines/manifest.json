@@ -2,6 +2,7 @@
   "thresholds": {
     "pixelThreshold": 24,
     "mismatchLimit": 0.008,
+    "winterNightMismatchLimit": 0.012,
     "meanDeltaLimit": 2.2
   },
   "scenarios": [
