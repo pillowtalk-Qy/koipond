@@ -5,9 +5,9 @@
   "type": "module",
   "description": "Turn your GitHub contribution graph into a living koi pond where fish graze your commits as plankton.",
   "license": "MIT",
-  "author": "0xydev",
+  "author": "pillowtalk-Qy",
   "contributors": [
-    "pillowtalk-Qy"
+    "0xydev (original project creator)"
   ],
   "repository": "github:pillowtalk-Qy/koipond",
   "homepage": "https://pillowtalk-qy.github.io/koipond/",
@@ -30,6 +30,8 @@
     "capture:motion": "node --import tsx scripts/motion-regression.ts",
     "visual:check": "node --import tsx scripts/visual-regression.ts",
     "visual:update": "node --import tsx scripts/visual-regression.ts --update",
+    "release:check": "node --import tsx scripts/release.ts --check",
+    "release:sync": "node --import tsx scripts/release.ts --sync",
     "build:site": "esbuild src/web/main.ts --bundle --minify --format=iife --outfile=site/demo.js",
     "cf:types": "wrangler types worker-configuration.d.ts",
     "cf:dev": "wrangler dev",

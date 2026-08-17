@@ -9,7 +9,8 @@
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](#contributing)
 
 > [!IMPORTANT]
-> **Project lineage:** this repository is derived from
+> **Project lineage:** this is an independently published and maintained Qy project; GitHub does not
+> classify the repository as a fork. It is derived from
 > [0xydev/koipond](https://github.com/0xydev/koipond). The original concept, visual language,
 > renderer and initial implementation were created by [@0xydev](https://github.com/0xydev).
 > Qy's `original-plus` edition preserves that foundation while adding persistent ecology,
@@ -113,7 +114,7 @@ jobs:
   generate:
     runs-on: ubuntu-latest
     steps:
-      - uses: pillowtalk-Qy/koipond@a2e5594062ea6411f4a67180c0d913c9adbb961b
+      - uses: pillowtalk-Qy/koipond@b54416a02fc0f82d42234c3a487b61ce801f7f41
         with:
           github_user_name: ${{ github.repository_owner }}
           outputs: |
@@ -290,6 +291,17 @@ npm run visual:check  # 32 season/phase/profile/viewport baselines
 
 After an intentional visual change, inspect the rendered images in `.visual-regression/`, then run
 `npm run visual:update` to accept new baselines. Do not update baselines merely to make CI pass.
+
+Pinned Action references have one source of truth: [`release.json`](release.json). After a candidate
+commit passes CI, advance every core and Profile reference together with:
+
+```sh
+npm run release:sync -- --set=<verified-40-character-sha> --profile=../pillowtalk-Qy-profile
+npm run release:check -- --profile=../pillowtalk-Qy-profile
+```
+
+Commit the synchronized references as a small follow-up release commit. CI rejects stale core
+references automatically.
 
 New species, decor, themes and achievement rules are all good first issues: species live in
 `src/render/fish.ts`, decor in `src/render/decor.ts`, colors in `src/render/palette.ts`.
