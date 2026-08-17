@@ -1,3 +1,11 @@
+> [!IMPORTANT]
+> **This repository is the archived predecessor.** Active development, releases, the online
+> explorer and the Qy-owned publication chain have moved to
+> [pillowtalk-Qy/koi-almanac](https://github.com/pillowtalk-Qy/koi-almanac). Koi Almanac is an
+> independently maintained derivative with a fresh Qy root history; it preserves the original MIT
+> license, copyright notice and explicit credit to [0xydev/koipond](https://github.com/0xydev/koipond).
+> Existing pinned references remain here as a historical compatibility record.
+
 # koipond 🎏
 
 [![ci](https://github.com/pillowtalk-Qy/koipond/actions/workflows/ci.yml/badge.svg)](https://github.com/pillowtalk-Qy/koipond/actions/workflows/ci.yml)
