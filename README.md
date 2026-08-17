@@ -74,7 +74,7 @@ pond with the fish placed along their real paths.
 
 The published `pond-state.json` is intentionally small and auditable. It contains the public daily
 contribution levels, deterministic fish identities and cumulative feeding energy. It never stores
-repository names, commit messages, private counts or visitor data. A repeated run over the same
+contribution repository names, commit messages, private counts or visitor data. A repeated run over the same
 calendar cannot feed the fish twice; only newly visible energy changes the state. Every revision
 contains SHA-256 digests of its source calendar, complete state and preceding revision. New revisions
 also bind the generator repository and exact 40-character commit SHA into that digest. The same
@@ -85,6 +85,12 @@ Cloudflare Worker, rather than a third-party contribution API. The Worker sets n
 application logs and stores no visitor identifiers; it keeps only a 15-minute edge cache of the public
 calendar response. Its source and runtime tests live in [`worker/`](worker/), and the production health
 endpoint is [`koipond-contributions.intentflow-inspector.workers.dev/health`](https://koipond-contributions.intentflow-inspector.workers.dev/health).
+
+A daily first-party synthetic monitor checks the explorer, Worker, one fixed public calendar, Profile SVG,
+state hash chain, SVG provenance and released generator SHA. It never samples real visitors, sends no
+cookies and retains no response bodies. The endpoints and synthetic identity are explicit in
+[`monitor.json`](monitor.json); the monitor runs in GitHub Actions and can also be run with
+`npm run monitor:production`.
 
 Everything is baked into a self-contained animated SVG (CSS keyframes, no JavaScript), so it works
 anywhere GitHub renders images, including profile READMEs. Because GitHub does not execute JavaScript
