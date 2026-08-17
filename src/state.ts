@@ -5,6 +5,13 @@ import type { FishIdentity, Grid, Plan, Species } from './types'
 
 export const POND_STATE_VERSION = 2
 const SHA256 = /^[a-f0-9]{64}$/
+const COMMIT_SHA = /^[a-f0-9]{40}$/
+const REPOSITORY = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/
+
+export interface PondGenerator {
+  repository: string
+  sha: string
+}
 
 export interface PersistentFish extends FishIdentity {
   lastFedOn: string
@@ -26,6 +33,7 @@ export interface PondState {
   fish: PersistentFish[]
   snapshot: Record<string, number>
   lastDelta: Record<string, number>
+  generator: PondGenerator | null
   proof: PondProof
 }
 
@@ -37,6 +45,7 @@ export interface PondProvenance {
   sourceDigest: string
   previousDigest: string | null
   stateDigest: string
+  generator: PondGenerator | null
 }
 
 export interface PreparedPondState {
@@ -105,6 +114,13 @@ function parseEnergyRecord(value: unknown): Record<string, number> | null {
   return record
 }
 
+export function parsePondGenerator(value: unknown): PondGenerator | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+  const generator = value as Partial<PondGenerator>
+  if (!REPOSITORY.test(generator.repository ?? '') || !COMMIT_SHA.test(generator.sha ?? '')) return null
+  return { repository: generator.repository as string, sha: generator.sha as string }
+}
+
 function statePayload(state: PondState): unknown {
   return {
     version: state.version,
@@ -115,6 +131,7 @@ function statePayload(state: PondState): unknown {
     fish: state.fish,
     snapshot: state.snapshot,
     lastDelta: state.lastDelta,
+    ...(state.generator ? { generator: state.generator } : {}),
     proof: {
       algorithm: state.proof.algorithm,
       sourceDigest: state.proof.sourceDigest,
@@ -134,6 +151,7 @@ function signed(state: PondState): PondState {
     fish: state.fish.map(fish => ({ ...fish })),
     snapshot: { ...state.snapshot },
     lastDelta: { ...state.lastDelta },
+    generator: state.generator ? { ...state.generator } : null,
     proof: { ...state.proof },
   }
   copy.proof.digest = stateDigestFor(copy)
@@ -173,6 +191,7 @@ export function parsePondState(value: unknown, owner: string, seed: string): Pon
       fish: common.fish,
       snapshot: common.snapshot,
       lastDelta: {},
+      generator: null,
       proof: {
         algorithm: 'sha256',
         sourceDigest: sourceDigestFor(owner, common.snapshot),
@@ -198,6 +217,8 @@ export function parsePondState(value: unknown, owner: string, seed: string): Pon
   for (const [date, delta] of Object.entries(lastDelta)) {
     if (common.snapshot[date] === undefined || delta > common.snapshot[date]) return null
   }
+  const generator = raw.generator === undefined || raw.generator === null ? null : parsePondGenerator(raw.generator)
+  if (raw.generator !== undefined && raw.generator !== null && !generator) return null
 
   const state: PondState = {
     version: POND_STATE_VERSION,
@@ -208,6 +229,7 @@ export function parsePondState(value: unknown, owner: string, seed: string): Pon
     fish: common.fish,
     snapshot: common.snapshot,
     lastDelta,
+    generator,
     proof: {
       algorithm: 'sha256',
       sourceDigest: proof.sourceDigest as string,
@@ -254,8 +276,10 @@ export function preparePondState(
   owner: string,
   seed: string,
   previousValue: unknown = null,
+  generator?: PondGenerator,
 ): PreparedPondState {
   const previous = parsePondState(previousValue, owner, seed)
+  const currentGenerator = generator ?? previous?.generator ?? null
   const ordered = [...grid.cells].sort((a, b) => a.date.localeCompare(b.date))
   const updatedOn = ordered.at(-1)?.date ?? previous?.updatedOn ?? '1970-01-01'
   const snapshot: Record<string, number> = {}
@@ -283,9 +307,10 @@ export function preparePondState(
 
   const snapshotChanged = canonicalJSON(previous?.snapshot ?? {}) !== canonicalJSON(snapshot)
   const populationChanged = fish.length !== (previous?.fish.length ?? 0)
-  const changed = !previous || snapshotChanged || populationChanged
+  const generatorChanged = canonicalJSON(previous?.generator ?? null) !== canonicalJSON(currentGenerator)
+  const changed = !previous || snapshotChanged || populationChanged || generatorChanged
   const revision = (previous?.revision ?? 0) + (changed ? 1 : 0)
-  const lastDelta = snapshotChanged || !previous ? currentDelta : populationChanged ? {} : previous.lastDelta
+  const lastDelta = snapshotChanged || !previous ? currentDelta : populationChanged || generatorChanged ? {} : previous.lastDelta
   const state = signed({
     version: POND_STATE_VERSION,
     owner,
@@ -295,6 +320,7 @@ export function preparePondState(
     fish,
     snapshot,
     lastDelta: { ...lastDelta },
+    generator: currentGenerator,
     proof: {
       algorithm: 'sha256',
       sourceDigest: sourceDigestFor(owner, snapshot),
@@ -341,6 +367,7 @@ export function provenanceFor(state: PondState): PondProvenance {
     sourceDigest: state.proof.sourceDigest,
     previousDigest: state.proof.previousDigest,
     stateDigest: state.proof.digest,
+    generator: state.generator ? { ...state.generator } : null,
   }
 }
 

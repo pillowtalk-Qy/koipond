@@ -76,7 +76,8 @@ The published `pond-state.json` is intentionally small and auditable. It contain
 contribution levels, deterministic fish identities and cumulative feeding energy. It never stores
 repository names, commit messages, private counts or visitor data. A repeated run over the same
 calendar cannot feed the fish twice; only newly visible energy changes the state. Every revision
-contains SHA-256 digests of its source calendar, complete state and preceding revision. The same
+contains SHA-256 digests of its source calendar, complete state and preceding revision. New revisions
+also bind the generator repository and exact 40-character commit SHA into that digest. The same
 provenance is embedded in the SVG's `<metadata>` element.
 
 The online explorer reads only GitHub's public contribution calendar through this project's own
@@ -216,6 +217,12 @@ Verify a downloaded state independently:
 npm run verify:state -- dist/pond-state.json
 ```
 
+Require the state to have been produced by one exact, independently inspectable generator revision:
+
+```sh
+npm run verify:state -- dist/pond-state.json --expect-generator=pillowtalk-Qy/koipond@<40-character-sha>
+```
+
 To verify one revision links to an earlier state retrieved from Git history:
 
 ```sh
@@ -238,6 +245,8 @@ npm run verify:state -- pond-state.json previous-pond-state.json
 | `--out` | Output directory (default `dist`) |
 | `--video` | Also render a `.gif` or `.mp4` of the loop, with the same query options (`pond.mp4?fps=60`) |
 | `--state` | Read and update a persistent pond-state JSON file (optional) |
+| `--generator-repository` | Generator identity to bind into state, as `owner/repository` (requires `--generator-sha`) |
+| `--generator-sha` | Exact 40-character generator commit to bind into state |
 
 ## How it works
 
@@ -269,7 +278,7 @@ npm run verify:state -- pond-state.json previous-pond-state.json
 - [x] Energy, satiety, schooling, separation and lily-pad avoidance
 - [x] Accessible static pond for reduced-motion visitors
 - [x] Cross-day fish identity, growth and replay-safe feeding state
-- [x] SHA-256 state provenance, SVG metadata and standalone verification
+- [x] SHA-256 state provenance, exact generator identity, SVG metadata and standalone verification
 - [x] GitHub Action packaging with persistent state and query-string options
 - [x] GIF and MP4 output (headless browser capture)
 - [x] Continuous 24-hour solar direction, light, dawn, dusk and night from the original two palettes

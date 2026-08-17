@@ -14,6 +14,10 @@ import {
 
 const owner = 'pillowtalk-Qy'
 const seed = owner
+const generator = {
+  repository: 'pillowtalk-Qy/koipond',
+  sha: '1234567890abcdef1234567890abcdef12345678',
+}
 
 describe('persistent pond state', () => {
   it('bootstraps stable fish identities and conserves lifetime energy', () => {
@@ -114,7 +118,25 @@ describe('persistent pond state', () => {
     expect(migrated?.version).toBe(2)
     expect(migrated?.fish).toEqual(current.fish)
     expect(migrated?.lastDelta).toEqual({})
+    expect(migrated?.generator).toBeNull()
     expect(verifyPondState(migrated)).toEqual(migrated)
+  })
+
+  it('cryptographically binds the exact generator and links generator upgrades', () => {
+    const grid = demoGrid('state-generator')
+    const prepared = preparePondState(grid, owner, seed, null, generator)
+    const first = finalizePondState(prepared, plan(grid, seed, prepared.identities))
+
+    expect(first.generator).toEqual(generator)
+    expect(verifyPondState({ ...first, generator: { ...generator, sha: 'a'.repeat(40) } })).toBeNull()
+
+    const upgradedGenerator = { ...generator, sha: 'abcdef1234567890abcdef1234567890abcdef12' }
+    const upgraded = preparePondState(grid, owner, seed, first, upgradedGenerator).state
+    expect(upgraded.revision).toBe(first.revision + 1)
+    expect(upgraded.proof.previousDigest).toBe(first.proof.digest)
+    expect(upgraded.proof.digest).not.toBe(first.proof.digest)
+    expect(upgraded.lastDelta).toEqual({})
+    expect(upgraded.generator).toEqual(upgradedGenerator)
   })
 
   it('canonicalizes object keys before hashing', () => {

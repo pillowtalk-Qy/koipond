@@ -7,7 +7,14 @@ import { fetchGrid, fetchGridPublic } from './github'
 import { plan } from './planner'
 import { THEMES, themeForEnvironment } from './render/palette'
 import { renderSVG, type RenderContext } from './render/svg'
-import { finalizePondState, highlightedCells, preparePondState, provenanceFor, serializePondState } from './state'
+import {
+  finalizePondState,
+  highlightedCells,
+  parsePondGenerator,
+  preparePondState,
+  provenanceFor,
+  serializePondState,
+} from './state'
 import { parseVideoQuery, renderVideo } from './video'
 import type { Grid } from './types'
 
@@ -28,6 +35,8 @@ const { values } = parseArgs({
     latitude: { type: 'string' },
     longitude: { type: 'string' },
     season: { type: 'string' },
+    'generator-repository': { type: 'string' },
+    'generator-sha': { type: 'string' },
   },
 })
 
@@ -78,7 +87,15 @@ if (values.state && existsSync(values.state)) {
   }
 }
 const owner = values.user ?? 'koipond-demo'
-const preparedState = values.state ? preparePondState(grid, owner, seed, previousState) : null
+const generatorOptionsPresent = Boolean(values['generator-repository'] || values['generator-sha'])
+const generator = generatorOptionsPresent
+  ? parsePondGenerator({ repository: values['generator-repository'], sha: values['generator-sha'] })
+  : null
+if (generatorOptionsPresent && !generator) {
+  console.error('--generator-repository requires owner/repository and --generator-sha requires a 40-character SHA')
+  process.exit(1)
+}
+const preparedState = values.state ? preparePondState(grid, owner, seed, previousState, generator ?? undefined) : null
 const feedingPlan = plan(grid, seed, preparedState?.identities)
 const nextState = preparedState ? finalizePondState(preparedState, feedingPlan) : null
 const p = nextState ? plan(grid, seed, nextState.fish) : feedingPlan

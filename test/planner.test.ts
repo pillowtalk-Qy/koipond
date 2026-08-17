@@ -249,7 +249,11 @@ describe('render', () => {
   })
 
   it('embeds verifiable provenance and highlights only the latest delta', () => {
-    const prepared = preparePondState(grid, 'pillowtalk-Qy', 'x')
+    const generator = {
+      repository: 'pillowtalk-Qy/koipond',
+      sha: '1234567890abcdef1234567890abcdef12345678',
+    }
+    const prepared = preparePondState(grid, 'pillowtalk-Qy', 'x', null, generator)
     const state = finalizePondState(prepared, plan(grid, 'x', prepared.identities))
     const p = plan(grid, 'x', state.fish)
     const oneHighlight = new Set([p.eats[0].cell])
@@ -260,6 +264,8 @@ describe('render', () => {
 
     expect(svg).toContain('<metadata id="koipond-provenance">')
     expect(svg).toContain(state.proof.digest)
+    expect(svg).toContain(generator.repository)
+    expect(svg).toContain(generator.sha)
     expect((svg.match(/class="rp r[^"]+ fresh"/g) ?? []).length).toBe(1)
     expect(highlightedCells(grid, state).size).toBe(grid.cells.filter(cell => cell.level > 0).length)
   })

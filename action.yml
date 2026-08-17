@@ -52,3 +52,5 @@ runs:
         KOIPOND_STATE_FILE: ${{ inputs.state_file }}
         KOIPOND_STATE_BRANCH: ${{ inputs.state_branch }}
         KOIPOND_STATE_PATH: ${{ inputs.state_path }}
+        KOIPOND_GENERATOR_REPOSITORY: ${{ github.action_repository }}
+        KOIPOND_GENERATOR_SHA: ${{ github.action_ref }}
