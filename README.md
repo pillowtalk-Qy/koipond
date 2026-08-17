@@ -284,7 +284,12 @@ npm install
 npm run demo          # see your changes in dist/preview.html
 npm run typecheck
 npm test
+npm run verify:motion # physics, spacing and loop-seam checks
+npm run visual:check  # 32 season/phase/profile/viewport baselines
 ```
+
+After an intentional visual change, inspect the rendered images in `.visual-regression/`, then run
+`npm run visual:update` to accept new baselines. Do not update baselines merely to make CI pass.
 
 New species, decor, themes and achievement rules are all good first issues: species live in
 `src/render/fish.ts`, decor in `src/render/decor.ts`, colors in `src/render/palette.ts`.

@@ -1,0 +1,297 @@
+{
+  "thresholds": {
+    "pixelThreshold": 24,
+    "mismatchLimit": 0.008,
+    "meanDeltaLimit": 2.2
+  },
+  "scenarios": [
+    {
+      "name": "active-spring-day-desktop",
+      "width": 737,
+      "height": 186,
+      "digest": "a2d3fa4c4dec562d23b28ca4aae695fb6d96884d6af5ece103abb6e288c99e73",
+      "mismatchRatio": 0,
+      "meanDelta": 0,
+      "status": "created"
+    },
+    {
+      "name": "active-spring-day-mobile",
+      "width": 390,
+      "height": 98,
+      "digest": "d8d01ec623fb2b5c439969e1137458ffa5db541b6e94f8672912bd0c4bc86be1",
+      "mismatchRatio": 0,
+      "meanDelta": 0,
+      "status": "created"
+    },
+    {
+      "name": "active-spring-night-desktop",
+      "width": 737,
+      "height": 186,
+      "digest": "cd89ba990838f5027c33209cc046d94dd2a02e9b682de628707a31619b824221",
+      "mismatchRatio": 0,
+      "meanDelta": 0,
+      "status": "created"
+    },
+    {
+      "name": "active-spring-night-mobile",
+      "width": 390,
+      "height": 98,
+      "digest": "a66bae5ef5c898860f0abc98510766de394869261770c308957f5920481713b2",
+      "mismatchRatio": 0,
+      "meanDelta": 0,
+      "status": "created"
+    },
+    {
+      "name": "active-summer-day-desktop",
+      "width": 737,
+      "height": 186,
+      "digest": "30ce440bbdffc77f4a69b7ba9bdf81a81fad89ce7d00aee3b4e0f9f1da3585f3",
+      "mismatchRatio": 0,
+      "meanDelta": 0,
+      "status": "created"
+    },
+    {
+      "name": "active-summer-day-mobile",
+      "width": 390,
+      "height": 98,
+      "digest": "cb871de72ebdc18cf58fe95be3e2b500bf59258a4a78236e59fd16bfc46c7508",
+      "mismatchRatio": 0,
+      "meanDelta": 0,
+      "status": "created"
+    },
+    {
+      "name": "active-summer-night-desktop",
+      "width": 737,
+      "height": 186,
+      "digest": "9187fdcea1be5ca01276d09b4b13d06ffc522c9daf79f1da8e45d6b10af11cd0",
+      "mismatchRatio": 0,
+      "meanDelta": 0,
+      "status": "created"
+    },
+    {
+      "name": "active-summer-night-mobile",
+      "width": 390,
+      "height": 98,
+      "digest": "02c4588e6810a4d86aefef9bf185c8e2e124c97395d39c0615c3832c885cb553",
+      "mismatchRatio": 0,
+      "meanDelta": 0,
+      "status": "created"
+    },
+    {
+      "name": "active-autumn-day-desktop",
+      "width": 737,
+      "height": 186,
+      "digest": "3b6e8d526e48c03ddee592cd773751ba7dff9248fa80d83a4940aa26290693a7",
+      "mismatchRatio": 0,
+      "meanDelta": 0,
+      "status": "created"
+    },
+    {
+      "name": "active-autumn-day-mobile",
+      "width": 390,
+      "height": 98,
+      "digest": "d745d656d412cb5acdab3aabc2fb688aa872d838ebf3881ac349a607775cd8c6",
+      "mismatchRatio": 0,
+      "meanDelta": 0,
+      "status": "created"
+    },
+    {
+      "name": "active-autumn-night-desktop",
+      "width": 737,
+      "height": 186,
+      "digest": "b1db5fb9bf2965b6c19c75ff7fe7d77d7030ac5cd2293d1601a4f2a4676e39cd",
+      "mismatchRatio": 0,
+      "meanDelta": 0,
+      "status": "created"
+    },
+    {
+      "name": "active-autumn-night-mobile",
+      "width": 390,
+      "height": 98,
+      "digest": "fcb308398a1614837aa614f92a131a9ad5ff71eca84f2a9cc7cd213611231653",
+      "mismatchRatio": 0,
+      "meanDelta": 0,
+      "status": "created"
+    },
+    {
+      "name": "active-winter-day-desktop",
+      "width": 737,
+      "height": 186,
+      "digest": "ea953a8fb7f14c053f0b4171ed54f3408e52f3a0fddc2d2fb09ccb198ca54df5",
+      "mismatchRatio": 0,
+      "meanDelta": 0,
+      "status": "created"
+    },
+    {
+      "name": "active-winter-day-mobile",
+      "width": 390,
+      "height": 98,
+      "digest": "6a4e3f10b00201c34f2561dca0a0df91364f2628eac4d6fcdb64abf466970df7",
+      "mismatchRatio": 0,
+      "meanDelta": 0,
+      "status": "created"
+    },
+    {
+      "name": "active-winter-night-desktop",
+      "width": 737,
+      "height": 186,
+      "digest": "05699182eca1c31d93d9403724f4e09f82294f1e43ef44473e58d067db90f19c",
+      "mismatchRatio": 0,
+      "meanDelta": 0,
+      "status": "created"
+    },
+    {
+      "name": "active-winter-night-mobile",
+      "width": 390,
+      "height": 98,
+      "digest": "2fcb292c26d2ca7c3300a6a91454ce03fe8d8e68383119564a0b9c0c52a4d8e7",
+      "mismatchRatio": 0,
+      "meanDelta": 0,
+      "status": "created"
+    },
+    {
+      "name": "sparse-spring-day-desktop",
+      "width": 737,
+      "height": 186,
+      "digest": "4c24edfef093c88db6ae7d30be6553068e85ae8efca02700203128b6f05387a9",
+      "mismatchRatio": 0,
+      "meanDelta": 0,
+      "status": "created"
+    },
+    {
+      "name": "sparse-spring-day-mobile",
+      "width": 390,
+      "height": 98,
+      "digest": "7309e571ed932b2b31b0a1b69431d56a03a78011a71999e96ac5030f4df9c554",
+      "mismatchRatio": 0,
+      "meanDelta": 0,
+      "status": "created"
+    },
+    {
+      "name": "sparse-spring-night-desktop",
+      "width": 737,
+      "height": 186,
+      "digest": "b0f9e046073ed221e4dfdd58095b0f2c8a91900b8602be7a3cbe7381f44452f7",
+      "mismatchRatio": 0,
+      "meanDelta": 0,
+      "status": "created"
+    },
+    {
+      "name": "sparse-spring-night-mobile",
+      "width": 390,
+      "height": 98,
+      "digest": "eab292b0031def4003802e3c9cd56d213603cab29608f8a6e18c0d59dd08b5b5",
+      "mismatchRatio": 0,
+      "meanDelta": 0,
+      "status": "created"
+    },
+    {
+      "name": "sparse-summer-day-desktop",
+      "width": 737,
+      "height": 186,
+      "digest": "b3b95198a01f3a38d1ef31e48752959ccfe70560e151f0ec45dfe26a7811834e",
+      "mismatchRatio": 0,
+      "meanDelta": 0,
+      "status": "created"
+    },
+    {
+      "name": "sparse-summer-day-mobile",
+      "width": 390,
+      "height": 98,
+      "digest": "5115cd07a672e8b6bf0e861dad85d858e24c436103bb382ad7a2ee5705b655e4",
+      "mismatchRatio": 0,
+      "meanDelta": 0,
+      "status": "created"
+    },
+    {
+      "name": "sparse-summer-night-desktop",
+      "width": 737,
+      "height": 186,
+      "digest": "1141d9be78a2f3d1163f67cad96a8ed87dec6221af0cebd227ca23d09605d8cb",
+      "mismatchRatio": 0,
+      "meanDelta": 0,
+      "status": "created"
+    },
+    {
+      "name": "sparse-summer-night-mobile",
+      "width": 390,
+      "height": 98,
+      "digest": "de7f294740b02c2da614289d66a808dbdc3982b18522be2c659c877b415e8f1a",
+      "mismatchRatio": 0,
+      "meanDelta": 0,
+      "status": "created"
+    },
+    {
+      "name": "sparse-autumn-day-desktop",
+      "width": 737,
+      "height": 186,
+      "digest": "2f59a7c1fbccde65db02cc4494dfd5923a11f92e6cdd5f26bf38370a2adb271e",
+      "mismatchRatio": 0,
+      "meanDelta": 0,
+      "status": "created"
+    },
+    {
+      "name": "sparse-autumn-day-mobile",
+      "width": 390,
+      "height": 98,
+      "digest": "caeecc03b8b8764e53b363a9c0b34fe1c05f4b78491a23a48bf0a4ae140d265a",
+      "mismatchRatio": 0,
+      "meanDelta": 0,
+      "status": "created"
+    },
+    {
+      "name": "sparse-autumn-night-desktop",
+      "width": 737,
+      "height": 186,
+      "digest": "066cd75830ac79f66c84bba68aa0df0f2ab6d896b58829ab12dc70ae5bcad045",
+      "mismatchRatio": 0,
+      "meanDelta": 0,
+      "status": "created"
+    },
+    {
+      "name": "sparse-autumn-night-mobile",
+      "width": 390,
+      "height": 98,
+      "digest": "b8ec11c68909daf214ce7e48089e4b1a51a33c272ae4539790cafe0860a80467",
+      "mismatchRatio": 0,
+      "meanDelta": 0,
+      "status": "created"
+    },
+    {
+      "name": "sparse-winter-day-desktop",
+      "width": 737,
+      "height": 186,
+      "digest": "6f018452ed4257c33f687bea3ef7d7090352df9bc5ef51684b3bc8a1b469f531",
+      "mismatchRatio": 0,
+      "meanDelta": 0,
+      "status": "created"
+    },
+    {
+      "name": "sparse-winter-day-mobile",
+      "width": 390,
+      "height": 98,
+      "digest": "030fb7184d012883c70542798f2f414f78842eee19875ed8940b07ab6388af63",
+      "mismatchRatio": 0,
+      "meanDelta": 0,
+      "status": "created"
+    },
+    {
+      "name": "sparse-winter-night-desktop",
+      "width": 737,
+      "height": 186,
+      "digest": "3eb7dfec301db52b04dbb78b48dadf5bdb44cd6cb2747c2f6ecbde409695590d",
+      "mismatchRatio": 0,
+      "meanDelta": 0,
+      "status": "created"
+    },
+    {
+      "name": "sparse-winter-night-mobile",
+      "width": 390,
+      "height": 98,
+      "digest": "8c48ed305136257053bb0be73a3bd0cec671ab393daa88dd8076a790f5c4d377",
+      "mismatchRatio": 0,
+      "meanDelta": 0,
+      "status": "created"
+    }
+  ]
+}

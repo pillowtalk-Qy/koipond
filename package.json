@@ -28,6 +28,8 @@
     "verify:state": "tsx src/verify.ts",
     "verify:motion": "node --import tsx scripts/motion-regression.ts --metrics-only",
     "capture:motion": "node --import tsx scripts/motion-regression.ts",
+    "visual:check": "node --import tsx scripts/visual-regression.ts",
+    "visual:update": "node --import tsx scripts/visual-regression.ts --update",
     "build:site": "esbuild src/web/main.ts --bundle --minify --format=iife --outfile=site/demo.js",
     "cf:types": "wrangler types worker-configuration.d.ts",
     "cf:dev": "wrangler dev",
@@ -45,6 +47,7 @@
     "@cloudflare/vitest-pool-workers": "^0.21.3",
     "@types/node": "^24.0.0",
     "esbuild": "^0.25.0",
+    "sharp": "0.35.2",
     "typescript": "^5.8.0",
     "vitest": "^4.1.10",
     "wrangler": "^4.123.0"

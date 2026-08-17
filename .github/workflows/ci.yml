@@ -19,4 +19,5 @@ jobs:
       - run: npm run typecheck:worker
       - run: npm test
       - run: npm run test:worker
+      - run: npm run visual:check
       - run: npx tsx src/cli.ts --demo --theme both --out smoke
